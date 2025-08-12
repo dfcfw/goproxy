@@ -1,0 +1,2 @@
+# goproxy
+go module proxy
