@@ -21,6 +21,7 @@ import (
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
+	"golang.org/x/mod/sumdb/dirhash"
 	modzip "golang.org/x/mod/zip"
 )
 
@@ -270,22 +271,18 @@ func (gmd *Gomod) Upload(mf multipart.File, modpath, version string) error {
 		}
 
 		lower := strings.ToLower(strings.TrimPrefix(zf.Name, zdir+"/"))
-		fmt.Println(lower)
-		if lower == "readme.md" || lower == "readme.markdown" {
+		if !mdok && (lower == "readme.md" || lower == "readme.markdown") {
 			if buf := dumpZip(zf); len(buf) != 0 {
 				mdok = true
 				mdbuf.Write(buf)
 			}
 		}
 	}
-	if !modok {
-		modbuf.Reset()
-		modbuf.WriteString("module " + mdv.Path + "\n")
-	}
 
 	{
 		// 存放 .zip
-		zfile, err := os.OpenFile(filepath.Join(dir, version+".zip"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
+		zname := filepath.Join(dir, version+".zip")
+		zfile, err := os.OpenFile(zname, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 		if err != nil {
 			return err
 		}
@@ -300,17 +297,10 @@ func (gmd *Gomod) Upload(mf multipart.File, modpath, version string) error {
 		if err != nil {
 			return err
 		}
-	}
-	{
-		// 提取 go.mod
-		mfile, err := os.OpenFile(filepath.Join(dir, version+".mod"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(mfile, modbuf)
-		_ = mfile.Close()
-		if err != nil {
-			return err
+
+		if h, err := dirhash.HashZip(zfile.Name(), dirhash.DefaultHash); err == nil {
+			hname := filepath.Join(dir, version+".ziphash")
+			os.WriteFile(hname, []byte(h), 0o644)
 		}
 	}
 	if mdok && mdbuf.Len() != 0 {
@@ -323,6 +313,10 @@ func (gmd *Gomod) Upload(mf multipart.File, modpath, version string) error {
 	}
 	{
 		// 提取 go.mod
+		if !modok {
+			modbuf.Reset()
+			modbuf.WriteString("module " + mdv.Path + "\n")
+		}
 		mfile, err := os.OpenFile(filepath.Join(dir, version+".mod"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 		if err != nil {
 			return err

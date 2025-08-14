@@ -24,7 +24,7 @@
         }
 
         #tree {
-            width: 40%;
+            width: 30%;
             overflow-y: auto;
             border-right: 1px solid #333;
             padding: 10px;
@@ -40,6 +40,30 @@
             list-style: none;
             padding-left: 18px;
             margin: 0;
+        }
+
+        .btn-download {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background-color: #2c2c2c;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            padding: 0;
+        }
+
+        .btn-download:hover {
+            background-color: #444;
+        }
+
+        .btn-download svg {
+            width: 16px;
+            height: 16px;
+            fill: #ccc;
         }
 
         .node {
@@ -364,26 +388,13 @@
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 
-    // function showDetails(moduleItem, files) {
-    //     const details = document.getElementById('details');
-    //     details.innerHTML = `
-    // <h2>${moduleItem.path}@${moduleItem.version}</h2>
-    // <table>
-    // <thead><tr><th>名称</th><th>权限</th><th>大小</th><th>修改时间</th></tr></thead>
-    // <tbody>${(files || []).map(f => `<tr><td>${f.name}</td><td>${f.mode}</td><td>${f.size ?? ''}</td><td>${formatDateTime(f.modified_at)}</td></tr>`).join('')}</tbody>
-    // </table>`;
-    // }
-
-    /**
-     * 显示模块详情，包括文件列表和 Markdown 渲染
-     */
     async function showDetails(moduleItem, files) {
         const details = document.getElementById('details');
         details.innerHTML = `
         <h2>${moduleItem.path}@${moduleItem.version}</h2>
         <table>
             <thead>
-                <tr><th>名称</th><th>权限</th><th>大小</th><th>修改时间</th></tr>
+                <tr><th>名称</th><th>权限</th><th>大小</th><th>修改时间</th><th>操作</th></tr>
             </thead>
             <tbody>
                 ${(files || []).map(f => `
@@ -392,6 +403,13 @@
                         <td>${f.mode}</td>
                         <td>${f.size ?? ''}</td>
                         <td>${formatDateTime(f.modified_at)}</td>
+                        <td>
+                            <button class="btn-download" title="下载" data-name="${f.name}">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M5 20h14v-2H5v2zm7-18v12l4-4h-3V4h-2v6H8l4 4z"/>
+                                </svg>
+                            </button>
+                        </td>
                     </tr>
                 `).join('')}
             </tbody>
@@ -399,6 +417,21 @@
         <div id="markdownPreview" class="markdown-body" style="margin-top:20px;"></div>
     `;
 
+        // 给下载按钮绑定事件
+        details.querySelectorAll('.btn-download').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const fileName = btn.getAttribute('data-name');
+                const downloadUrl = `/api/gomod/file?path=${encodeURIComponent(moduleItem.path)}&name=${encodeURIComponent(fileName)}`;
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            });
+        });
+
+        // Markdown 渲染逻辑保持不变
         const mdFile = (files || []).find(f => f.name.toLowerCase().endsWith('.markdown'));
         if (!mdFile) return;
 
@@ -420,7 +453,6 @@
                 text = new TextDecoder('utf-8').decode(bytes);
             }
 
-            // markdown-it 初始化
             const md = window.markdownit({
                 html: true,
                 linkify: true,
@@ -439,13 +471,11 @@
             const mdContainer = document.getElementById('markdownPreview');
             mdContainer.innerHTML = md.render(text);
 
-            // 高亮代码块
-            mdContainer.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
-
         } catch (err) {
             showToast(`Markdown 加载失败: ${err.message}`);
         }
     }
+
 
     async function init() {
         const treeDiv = document.getElementById('tree');
