@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>goproxy</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            background-color: #121212;
+            color: #ccc;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+            display: flex;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #tree {
+            width: 40%;
+            overflow-y: auto;
+            border-right: 1px solid #333;
+            padding: 10px;
+        }
+
+        #details {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        ul {
+            list-style: none;
+            padding-left: 18px;
+            margin: 0;
+        }
+
+        .node {
+            cursor: pointer;
+            padding: 3px 0;
+            display: flex;
+            align-items: center;
+            user-select: none;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .node:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .icon {
+            width: 16px;
+            height: 16px;
+            margin-right: 6px;
+        }
+
+        .toggle {
+            width: 12px;
+            height: 12px;
+            margin-right: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        table, th, td {
+            border: 1px solid #444;
+        }
+
+        th, td {
+            padding: 6px;
+            text-align: left;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* FAB 区域 */
+        .fab {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: #6200ea;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            font-size: 24px;
+        }
+
+        .fab:hover {
+            background-color: #3700b3;
+        }
+
+        /* 弹窗 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .modal-content input {
+            background: #2c2c2c;
+            border: none;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: #6200ea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #3700b3;
+        }
+
+        .btn-secondary {
+            background: #444;
+            color: white;
+        }
+
+        /* Material Design Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #323232;
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast button {
+            background: transparent;
+            border: none;
+            color: #ffab40;
+            cursor: pointer;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+<div id="tree"></div>
+<div id="details"><em>请选择一个节点查看详情</em></div>
+
+<!-- FAB 上传和格式转化 -->
+<div style="position: fixed; bottom:24px; right:24px; display:flex; gap:12px; align-items:center;">
+    <div class="fab" id="formatFab" title="格式转化"><span class="material-icons">transform</span></div>
+    <div class="fab" id="uploadFab" title="上传模块"><span class="material-icons">upload</span></div>
+</div>
+
+<!-- 上传弹窗 -->
+<div class="modal" id="uploadModal">
+    <div class="modal-content">
+        <h3>上传模块</h3>
+        <input type="file" id="zipFile" accept=".zip">
+        <input type="text" id="pathInput" placeholder="模块名，例如：github.com/module/path">
+        <input type="text" id="versionInput" placeholder="版本号，例如：v0.0.1-beta">
+        <div class="modal-actions">
+            <button class="btn btn-secondary" id="cancelUpload">取消</button>
+            <button class="btn btn-primary" id="submitUpload">提交</button>
+        </div>
+    </div>
+</div>
+
+<!-- 格式转化弹窗 -->
+<div class="modal" id="formatModal">
+    <div class="modal-content">
+        <h3>格式转化</h3>
+        <p style="color:#aaa; font-size:13px; margin:0 0 8px 0;">
+            请将 go 项目压缩为 zip 文件，根路径不要包含无关的层级结构，点击提交后会生成转化后的 zip 下载。
+        </p>
+        <input type="file" id="formatZip" accept=".zip">
+        <input type="text" id="formatPath" placeholder="模块名，例如：github.com/module/path">
+        <input type="text" id="formatVersion" placeholder="版本号，例如：v0.0.1-beta">
+        <div class="modal-actions">
+            <button class="btn btn-secondary" id="cancelFormat">取消</button>
+            <button class="btn btn-primary" id="submitFormat">提交</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+    // ---------- Toast ----------
+    let toastTimeout;
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.remove('show');
+        void toast.offsetWidth;
+        toast.classList.add('show');
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => toast.classList.remove('show'), 5000); // 5 秒
+    }
+
+    // ---------- Loading ----------
+    function showLoading(msg = '加载中...') {
+        let loading = document.getElementById('loadingOverlay');
+        if (!loading) {
+            loading = document.createElement('div');
+            loading.id = 'loadingOverlay';
+            Object.assign(loading.style, {
+                position: 'fixed',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: '100%',
+                background: 'rgba(0,0,0,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: '1000'
+            });
+            loading.innerHTML = `<div style="padding:16px;background:#222;border-radius:8px;color:white;">${msg}</div>`;
+            document.body.appendChild(loading);
+        } else {
+            loading.style.display = 'flex';
+            loading.innerHTML = `<div style="padding:16px;background:#222;border-radius:8px;color:white;">${msg}</div>`;
+        }
+    }
+
+    function hideLoading() {
+        const loading = document.getElementById('loadingOverlay');
+        if (loading) loading.style.display = 'none';
+    }
+
+    // ---------- 错误统一处理 ----------
+    async function handleFetchError(res) {
+        let msg = `请求失败: ${res.status}`;
+        try {
+            const data = await res.json();
+            if (data && data.detail) msg = data.detail;
+        } catch (e) {
+        }
+        showToast(msg);
+    }
+
+    // ---------- 数据处理 ----------
+    async function fetchData(url) {
+        const res = await fetch(url);
+        if (!res.ok) return await handleFetchError(res);
+        return await res.json();
+    }
+
+    function createNode(item, type) {
+        const li = document.createElement('li');
+        const div = document.createElement('div');
+        div.className = 'node';
+        const toggle = document.createElement('img');
+        toggle.className = 'toggle';
+        if (type === 'path') toggle.src = './img/unfold.svg'; else toggle.style.visibility = 'hidden';
+        div.appendChild(toggle);
+        const img = document.createElement('img');
+        img.className = 'icon';
+        img.src = type === 'path' ? './img/path.svg' : './img/gomod.svg';
+        div.appendChild(img);
+        div.appendChild(document.createTextNode(item.name || item.version));
+        li.appendChild(div);
+        let childrenContainer = document.createElement('ul');
+        childrenContainer.classList.add('hidden');
+        li.appendChild(childrenContainer);
+        div.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (type === 'path') {
+                if (!childrenContainer.hasChildNodes()) {
+                    try {
+                        const data = await fetchData(`/api/gomod/walk?path=${encodeURIComponent(item.path)}`);
+                        (data.paths || []).forEach(p => childrenContainer.appendChild(createNode(p, 'path')));
+                        (data.modules || []).forEach(m => {
+                            m.path = item.path;
+                            childrenContainer.appendChild(createNode(m, 'module'));
+                        });
+                    } catch (err) {
+                        return;
+                    }
+                }
+                const hidden = childrenContainer.classList.toggle('hidden');
+                toggle.src = hidden ? './img/unfold.svg' : './img/fold.svg';
+            } else if (type === 'module') {
+                try {
+                    const stat = await fetchData(`/api/gomod/stat?path=${encodeURIComponent(item.path)}&version=${encodeURIComponent(item.version)}`);
+                    showDetails(item, stat);
+                } catch (err) {
+                    return;
+                }
+            }
+        });
+        return li;
+    }
+
+    function formatDateTime(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const pad = n => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function showDetails(moduleItem, files) {
+        const details = document.getElementById('details');
+        details.innerHTML = `
+    <h2>${moduleItem.path}@${moduleItem.version}</h2>
+    <table>
+    <thead><tr><th>名称</th><th>权限</th><th>大小</th><th>修改时间</th></tr></thead>
+    <tbody>${(files || []).map(f => `<tr><td>${f.name}</td><td>${f.mode}</td><td>${f.size ?? ''}</td><td>${formatDateTime(f.modified_at)}</td></tr>`).join('')}</tbody>
+    </table>`;
+    }
+
+    async function init() {
+        const treeDiv = document.getElementById('tree');
+        treeDiv.innerHTML = '';
+        try {
+            const data = await fetchData('/api/gomod/walk?path=');
+            // 判断是否有数据
+            if (!data || (!data.paths || data.paths.length === 0) && (!data.modules || data.modules.length === 0)) {
+                treeDiv.innerHTML = '<em><h2>请点击右下角上传模块</h2></em>';
+                return;
+            }
+            const ul = document.createElement('ul');
+            (data.paths || []).forEach(p => ul.appendChild(createNode(p, 'path')));
+            (data.modules || []).forEach(m => ul.appendChild(createNode(m, 'module')));
+            treeDiv.appendChild(ul);
+        } catch (err) {
+        }
+    }
+
+    init();
+
+    // ---------- 上传模块 ----------
+    const uploadFab = document.getElementById('uploadFab');
+    const uploadModal = document.getElementById('uploadModal');
+    const cancelUpload = document.getElementById('cancelUpload');
+    const submitUpload = document.getElementById('submitUpload');
+    const zipFileInput = document.getElementById('zipFile');
+    const pathInput = document.getElementById('pathInput');
+    const versionInput = document.getElementById('versionInput');
+    uploadFab.addEventListener('click', () => uploadModal.style.display = 'flex');
+    cancelUpload.addEventListener('click', () => uploadModal.style.display = 'none');
+    uploadModal.addEventListener('click', (e) => {
+        if (e.target === uploadModal) uploadModal.style.display = 'none';
+    });
+
+    zipFileInput.addEventListener('change', async () => {
+        const file = zipFileInput.files[0];
+        if (!file) return;
+        if (file.type !== 'application/zip' && !file.name.endsWith('.zip')) {
+            showToast('请选择 zip 文件');
+            zipFileInput.value = '';
+            return;
+        }
+        showLoading('正在分析...');
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const res = await fetch('/api/gomod/sniff', {method: 'PUT', body: formData});
+            if (!res.ok) return await handleFetchError(res);
+            const data = await res.json();
+            if (data.path) pathInput.value = data.path;
+            if (data.version) versionInput.value = data.version;
+        } catch (err) {
+            showToast(err.message);
+        } finally {
+            hideLoading();
+        }
+    });
+
+    submitUpload.addEventListener('click', async () => {
+        const file = zipFileInput.files[0];
+        if (!file) return showToast('请先选择 zip 文件');
+        if (!pathInput.value.trim()) return showToast('模块路径必填');
+        if (!versionInput.value.trim()) return showToast('版本号必填');
+        showLoading('正在上传模块...');
+        submitUpload.disabled = true;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('path', pathInput.value.trim());
+        formData.append('version', versionInput.value.trim());
+        try {
+            const res = await fetch('/api/gomod/upload', {method: 'PUT', body: formData});
+            if (!res.ok) return await handleFetchError(res);
+            showToast('上传成功');
+            uploadModal.style.display = 'none';
+            zipFileInput.value = '';
+            pathInput.value = '';
+            versionInput.value = '';
+            await init();
+        } catch (err) {
+            showToast(err.message);
+        } finally {
+            hideLoading();
+            submitUpload.disabled = false;
+        }
+    });
+
+    // ---------- 格式转化模块 ----------
+    const formatFab = document.getElementById('formatFab');
+    const formatModal = document.getElementById('formatModal');
+    const cancelFormat = document.getElementById('cancelFormat');
+    const submitFormat = document.getElementById('submitFormat');
+    const formatZipInput = document.getElementById('formatZip');
+    const formatPathInput = document.getElementById('formatPath');
+    const formatVersionInput = document.getElementById('formatVersion');
+
+    formatFab.addEventListener('click', () => formatModal.style.display = 'flex');
+    cancelFormat.addEventListener('click', () => formatModal.style.display = 'none');
+    formatModal.addEventListener('click', (e) => {
+        if (e.target === formatModal) formatModal.style.display = 'none';
+    });
+
+    submitFormat.addEventListener('click', async () => {
+        const file = formatZipInput.files[0];
+        const path = formatPathInput.value.trim();
+        const version = formatVersionInput.value.trim();
+        if (!file) return showToast('请先选择 zip 文件');
+        if (!path) return showToast('模块路径必填');
+        if (!version) return showToast('版本号必填');
+        if (file.type !== 'application/zip' && !file.name.endsWith('.zip')) {
+            showToast('请选择 zip 文件');
+            formatZipInput.value = '';
+            return;
+        }
+        showLoading('正在转化...');
+        submitFormat.disabled = true;
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', path);
+            formData.append('version', version);
+            const res = await fetch('/api/gomod/format', {method: 'PUT', body: formData});
+            if (!res.ok) return await handleFetchError(res);
+            const blob = await res.blob();
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `${path.replace(/\//g, '_')}_${version}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(downloadUrl);
+            showToast('转化完成，已下载');
+            formatModal.style.display = 'none';
+            formatZipInput.value = '';
+            formatPathInput.value = '';
+            formatVersionInput.value = '';
+        } catch (err) {
+            showToast(err.message);
+        } finally {
+            hideLoading();
+            submitFormat.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>
