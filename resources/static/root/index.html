@@ -5,6 +5,14 @@
     <title>goproxy</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- 引入 markdown-it 和 highlight.js -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/13.0.1/markdown-it.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
     <style>
         body {
             background-color: #121212;
@@ -205,6 +213,11 @@
 <div class="modal" id="uploadModal">
     <div class="modal-content">
         <h3>上传模块</h3>
+        <ul style="color:#aaa; font-size:13px; margin:0 0 8px 0;">
+            <li>并不是任何 zip 文件都可以用作 go 模块。</li>
+            <br/>
+            <li>如果不知道如何制作 go 模块 zip，请点击左侧的格式转化按钮。</li>
+        </ul>
         <input type="file" id="zipFile" accept=".zip">
         <input type="text" id="pathInput" placeholder="模块名，例如：github.com/module/path">
         <input type="text" id="versionInput" placeholder="版本号，例如：v0.0.1-beta">
@@ -351,14 +364,87 @@
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 
-    function showDetails(moduleItem, files) {
+    // function showDetails(moduleItem, files) {
+    //     const details = document.getElementById('details');
+    //     details.innerHTML = `
+    // <h2>${moduleItem.path}@${moduleItem.version}</h2>
+    // <table>
+    // <thead><tr><th>名称</th><th>权限</th><th>大小</th><th>修改时间</th></tr></thead>
+    // <tbody>${(files || []).map(f => `<tr><td>${f.name}</td><td>${f.mode}</td><td>${f.size ?? ''}</td><td>${formatDateTime(f.modified_at)}</td></tr>`).join('')}</tbody>
+    // </table>`;
+    // }
+
+    /**
+     * 显示模块详情，包括文件列表和 Markdown 渲染
+     */
+    async function showDetails(moduleItem, files) {
         const details = document.getElementById('details');
         details.innerHTML = `
-    <h2>${moduleItem.path}@${moduleItem.version}</h2>
-    <table>
-    <thead><tr><th>名称</th><th>权限</th><th>大小</th><th>修改时间</th></tr></thead>
-    <tbody>${(files || []).map(f => `<tr><td>${f.name}</td><td>${f.mode}</td><td>${f.size ?? ''}</td><td>${formatDateTime(f.modified_at)}</td></tr>`).join('')}</tbody>
-    </table>`;
+        <h2>${moduleItem.path}@${moduleItem.version}</h2>
+        <table>
+            <thead>
+                <tr><th>名称</th><th>权限</th><th>大小</th><th>修改时间</th></tr>
+            </thead>
+            <tbody>
+                ${(files || []).map(f => `
+                    <tr>
+                        <td>${f.name}</td>
+                        <td>${f.mode}</td>
+                        <td>${f.size ?? ''}</td>
+                        <td>${formatDateTime(f.modified_at)}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        <div id="markdownPreview" class="markdown-body" style="margin-top:20px;"></div>
+    `;
+
+        const mdFile = (files || []).find(f => f.name.toLowerCase().endsWith('.markdown'));
+        if (!mdFile) return;
+
+        try {
+            const url = `/api/gomod/file?path=${encodeURIComponent(moduleItem.path)}&name=${encodeURIComponent(mdFile.name)}`;
+            const res = await fetch(url);
+            if (!res.ok) return await handleFetchError(res);
+
+            const buffer = await res.arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+            let text = '';
+
+            // BOM 检测
+            if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
+                text = new TextDecoder('utf-16le').decode(bytes.subarray(2));
+            } else if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
+                text = new TextDecoder('utf-16be').decode(bytes.subarray(2));
+            } else {
+                text = new TextDecoder('utf-8').decode(bytes);
+            }
+
+            // markdown-it 初始化
+            const md = window.markdownit({
+                html: true,
+                linkify: true,
+                typographer: true,
+                highlight: function (str, lang) {
+                    if (lang && hljs.getLanguage(lang)) {
+                        try {
+                            return hljs.highlight(str, {language: lang}).value;
+                        } catch (__) {
+                        }
+                    }
+                    return hljs.highlightAuto(str).value;
+                }
+            });
+
+            const mdContainer = document.getElementById('markdownPreview');
+            mdContainer.innerHTML = md.render(text);
+
+            // 高亮代码块
+            mdContainer.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+
+        } catch (err) {
+            showToast(`Markdown 加载失败: ${err.message}`);
+        }
     }
 
     async function init() {
@@ -368,7 +454,8 @@
             const data = await fetchData('/api/gomod/walk?path=');
             // 判断是否有数据
             if (!data || (!data.paths || data.paths.length === 0) && (!data.modules || data.modules.length === 0)) {
-                treeDiv.innerHTML = '<em><h2>请点击右下角上传模块</h2></em>';
+                treeDiv.innerHTML = `<em>当前没有任何 Go 模块，请点击右下角上传一个模块吧</em>`;
+                document.getElementById('details').innerHTML = '';
                 return;
             }
             const ul = document.createElement('ul');

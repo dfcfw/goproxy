@@ -255,25 +255,28 @@ func (gmd *Gomod) Upload(mf multipart.File, modpath, version string) error {
 	}
 	defer zr.Close()
 
-	var modok bool
+	var modok, mdok bool
 	modbuf := new(bytes.Buffer)
-	gomodName := path.Join(mdv.Path+"@"+mdv.Version, "go.mod")
+	mdbuf := new(bytes.Buffer)
+
+	zdir := path.Join(mdv.Path + "@" + mdv.Version)
+	gomodName := path.Join(zdir, "go.mod")
 	for _, zf := range zr.File {
-		if zf.Name != gomodName {
-			continue
+		if zf.Name == gomodName && !modok {
+			if buf := dumpZip(zf); len(buf) != 0 {
+				modok = true
+				modbuf.Write(buf)
+			}
 		}
 
-		zmod, exx := zf.Open()
-		if exx != nil {
-			return exx
+		lower := strings.ToLower(strings.TrimPrefix(zf.Name, zdir+"/"))
+		fmt.Println(lower)
+		if lower == "readme.md" || lower == "readme.markdown" {
+			if buf := dumpZip(zf); len(buf) != 0 {
+				mdok = true
+				mdbuf.Write(buf)
+			}
 		}
-		_, exx = io.Copy(modbuf, zmod)
-		_ = zmod.Close()
-		if exx != nil {
-			return exx
-		}
-		modok = true
-		break
 	}
 	if !modok {
 		modbuf.Reset()
@@ -310,8 +313,27 @@ func (gmd *Gomod) Upload(mf multipart.File, modpath, version string) error {
 			return err
 		}
 	}
+	if mdok && mdbuf.Len() != 0 {
+		// 提取 go.mod
+		mfile, err := os.OpenFile(filepath.Join(dir, version+".markdown"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
+		if err == nil {
+			_, _ = io.Copy(mfile, mdbuf)
+			_ = mfile.Close()
+		}
+	}
 	{
 		// 提取 go.mod
+		mfile, err := os.OpenFile(filepath.Join(dir, version+".mod"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(mfile, modbuf)
+		_ = mfile.Close()
+		if err != nil {
+			return err
+		}
+	}
+	{
 		ifile, err := os.OpenFile(filepath.Join(dir, version+".info"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 		if err != nil {
 			return err
@@ -360,6 +382,24 @@ func (gmd *Gomod) Upload(mf multipart.File, modpath, version string) error {
 	return nil
 }
 
+func (gmd *Gomod) Open(rawpath string, filename string) (*os.File, error) {
+	escpath, err := module.EscapePath(rawpath)
+	if err != nil {
+		return nil, err
+	}
+	ext := filepath.Ext(filename)
+	if ext == "" {
+		return nil, os.ErrNotExist
+	}
+	suffix := strings.TrimSuffix(filename, ext)
+	if _, err := module.UnescapeVersion(suffix); err != nil {
+		return nil, err
+	}
+	fpath := filepath.Join(gmd.dir, escpath, "@v", filename)
+
+	return os.Open(fpath)
+}
+
 type moduleInfo struct {
 	Version string    `json:",omitempty"`
 	Time    time.Time `json:",omitempty"`
@@ -380,4 +420,16 @@ func (z *zipFile) Lstat() (os.FileInfo, error) {
 
 func (z *zipFile) Open() (io.ReadCloser, error) {
 	return z.f.Open()
+}
+
+func dumpZip(f *zip.File) []byte {
+	zf, err := f.Open()
+	if err != nil {
+		return nil
+	}
+
+	buf, _ := io.ReadAll(zf)
+	_ = zf.Close()
+
+	return buf
 }

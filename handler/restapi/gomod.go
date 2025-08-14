@@ -3,7 +3,10 @@ package restapi
 import (
 	"archive/zip"
 	"bytes"
+	"mime"
 	"net/http"
+	"path/filepath"
+	"strconv"
 
 	"github.com/dfcfw/goproxy/business/service"
 	"github.com/dfcfw/goproxy/contract/request"
@@ -108,4 +111,32 @@ func (gmd *Gomod) Format(c *ship.Context) error {
 	}
 
 	return c.Stream(http.StatusOK, "application/zip", buf)
+}
+
+func (gmd *Gomod) File(c *ship.Context) error {
+	req := new(request.GomodFile)
+	if err := c.BindQuery(req); err != nil {
+		return err
+	}
+
+	modpath, name := req.Path, req.Name
+	ext := filepath.Ext(name)
+	ct := mime.TypeByExtension(ext)
+	if ct == "" {
+		ct = ship.MIMEOctetStream
+	}
+
+	file, err := gmd.svc.Open(modpath, name)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	disposition := mime.FormatMediaType("attachment", map[string]string{"filename": name})
+	c.SetRespHeader(ship.HeaderContentDisposition, disposition)
+	if inf, _ := file.Stat(); inf != nil {
+		c.SetRespHeader(ship.HeaderContentLength, strconv.FormatInt(inf.Size(), 10))
+	}
+
+	return c.Stream(http.StatusOK, ct, file)
 }

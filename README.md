@@ -2,7 +2,6 @@
 * [goproxy protocol](#goproxy-protocol)
   * [协议分析](#协议分析)
     * [获取版本列表 `$base/$module/@v/list`](#获取版本列表-basemodulevlist)
-      * [响应结果（为了防止文档太长影响阅读，中间的响应数据被 ... 代替）:](#响应结果为了防止文档太长影响阅读中间的响应数据被--代替)
     * [获取特定版本信息 `$base/$module/@v/$version.info`](#获取特定版本信息-basemodulevversioninfo)
     * [获取特定版本的 go.mod 文件 `$base/$module/@v/$version.mod`](#获取特定版本的-gomod-文件-basemodulevversionmod)
     * [获取特定版本的源码 zip 文件 `$base/$module/@v/$version.zip`](#获取特定版本的源码-zip-文件-basemodulevversionzip)
@@ -23,14 +22,15 @@
 
 GET https://goproxy.cn/github.com/labstack/echo/v4/@v/list
 
-#### 响应结果（为了防止文档太长影响阅读，中间的响应数据被 ... 代替）:
+响应结果：
+
+> 为了防止文档太长影响阅读，中间的响应数据用省略号代替
 
 ```text
 v4.0.0
 v4.1.0
 v4.1.1
 v4.1.2
-v4.1.3
 ...
 ...
 ...

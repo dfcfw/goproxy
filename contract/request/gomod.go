@@ -20,3 +20,8 @@ type GomodUpload struct {
 	Path    string                `json:"path"    form:"path"    validate:"required"`
 	Version string                `json:"version" form:"version" validate:"required"`
 }
+
+type GomodFile struct {
+	Path string `json:"path" query:"path" validate:"required"`
+	Name string `json:"name" query:"name" validate:"required"`
+}
