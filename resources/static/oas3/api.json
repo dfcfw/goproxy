@@ -3,13 +3,253 @@
   "info": {
     "title": "goproxy 接口文档",
     "description": "goproxy 接口文档",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "contact": {
+      "name": "Go",
+      "url": "https://go.dev",
+      "email": "nil@go.dev"
+    },
+    "termsOfService": "https://go.dev"
   },
   "servers": [
     {
+      "description": "当前服务",
       "url": "/"
     }
   ],
+  "tags": [
+    {
+      "name": "🚶‍♂️ 模块浏览"
+    },
+    {
+      "name": "📦 模块管理"
+    }
+  ],
   "paths": {
+    "/api/gomod/walk": {
+      "get": {
+        "summary": "浏览模块目录",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "paths": {
+                      "type": "array",
+                      "x-stoplight": {
+                        "id": "9pfjd6kg13mkz"
+                      },
+                      "description": "目录下的路径",
+                      "items": {
+                        "x-stoplight": {
+                          "id": "gxw3t7mbtzd5u"
+                        },
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "x-stoplight": {
+                              "id": "anlb45u7pn81z"
+                            },
+                            "description": "显示名",
+                            "example": "mod"
+                          },
+                          "path": {
+                            "type": "string",
+                            "x-stoplight": {
+                              "id": "0zx268auk0rnx"
+                            },
+                            "description": "路径",
+                            "example": "golang.org/go/mod"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "path"
+                        ]
+                      }
+                    },
+                    "modules": {
+                      "type": "array",
+                      "x-stoplight": {
+                        "id": "r3t9une8fred5"
+                      },
+                      "description": "目录下的模块",
+                      "items": {
+                        "x-stoplight": {
+                          "id": "po04iz70da3bn"
+                        },
+                        "type": "object",
+                        "properties": {
+                          "version": {
+                            "type": "string",
+                            "x-stoplight": {
+                              "id": "4pnoz9rrh9y57"
+                            },
+                            "description": "模块版本号",
+                            "example": "v1.2.3"
+                          }
+                        },
+                        "required": [
+                          "version"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "get-api-gomod-walk",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "golang.org/go/mod"
+            },
+            "in": "query",
+            "name": "path",
+            "description": "路径"
+          }
+        ],
+        "description": "首次打开时不知道目录可以留空",
+        "tags": [
+          "🚶‍♂️ 模块浏览"
+        ]
+      }
+    },
+    "/api/gomod/stat": {
+      "get": {
+        "summary": "获取模块信息",
+        "tags": [
+          "🚶‍♂️ 模块浏览"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "x-stoplight": {
+                      "id": "yn8qlac737jl3"
+                    },
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "x-stoplight": {
+                          "id": "lt2p09il76egm"
+                        },
+                        "example": "v1.2.3.zip",
+                        "description": "文件名"
+                      }
+                    },
+                    "required": [
+                      "file"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operationId": "get-api-gomod-stat",
+        "description": "获取模块信息",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "golang.org/x/mod"
+            },
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "description": "路径"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "example": "v1.2.3"
+            },
+            "in": "query",
+            "name": "version",
+            "required": true,
+            "description": "版本号"
+          }
+        ]
+      }
+    },
+    "/api/gomod/sniff": {
+      "put": {
+        "summary": "探测文件中的模块名和版本号",
+        "operationId": "put-api-gomod-sniff",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "x-stoplight": {
+                        "id": "8gtoiym0536vb"
+                      },
+                      "description": "模块名（路径）",
+                      "example": "golang.org/x/mod"
+                    },
+                    "version": {
+                      "type": "string",
+                      "x-stoplight": {
+                        "id": "gzw2027n1qvnl"
+                      },
+                      "description": "版本号",
+                      "example": "v1.2.3"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "version"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "📦 模块管理"
+        ],
+        "description": "上传一个 `.zip` 格式的文件，如果该文件是一个正常的 go 模块，则返回模块名和版本号。",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "x-stoplight": {
+                      "id": "dozk3m78jo4wk"
+                    },
+                    "description": ".zip 格式的文件",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
