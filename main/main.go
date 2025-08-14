@@ -14,9 +14,12 @@ func main() {
 	log := slog.Default()
 	sh := ship.Default()
 
+	rootRGB := sh.Group("/")
+	rootRGB.Route("/oas3").Static("resources/static/oas3/")
+
 	gomodSvc := service.NewGomod(moddir, log)
 	gomodAPI := restapi.NewGomod(gomodSvc)
-	apiRGB := sh.Group("/api")
+	apiRGB := rootRGB.Group("/api")
 	apiRGB.Route("/gomod/browse").GET(gomodAPI.Browse)
 
 	http.ListenAndServe(":65432", sh)

@@ -23,7 +23,7 @@ func NewGomod(dir string, log *slog.Logger) *Gomod {
 	}
 }
 
-func (gmd *Gomod) Browse(ctx context.Context, node string) error {
+func (gmd *Gomod) Walk(ctx context.Context, node string) error {
 	if node != "" {
 		escaped, err := module.EscapePath(node)
 		if err != nil {

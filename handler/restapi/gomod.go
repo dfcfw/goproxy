@@ -18,7 +18,7 @@ type Gomod struct {
 func (gmd *Gomod) Browse(c *ship.Context) error {
 	node := c.Query("node")
 	ctx := c.Request().Context()
-	_ = gmd.svc.Browse(ctx, node)
+	_ = gmd.svc.Walk(ctx, node)
 
 	return nil
 }
