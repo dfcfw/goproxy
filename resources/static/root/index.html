@@ -2,10 +2,9 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>goproxy</title>
+    <title>模块浏览</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <!-- 引入 markdown-it 和 highlight.js -->
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
@@ -15,9 +14,9 @@
 
     <style>
         body {
-            background-color: #121212;
+            background: #121212;
             color: #ccc;
-            font-family: 'IBM Plex Mono', Consolas, monospace;
+            font-family: 'IBM Plex Mono', monospace;
             display: flex;
             height: 100vh;
             margin: 0;
@@ -42,30 +41,6 @@
             margin: 0;
         }
 
-        .btn-download {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background-color: #2c2c2c;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
-            padding: 0;
-        }
-
-        .btn-download:hover {
-            background-color: #444;
-        }
-
-        .btn-download svg {
-            width: 16px;
-            height: 16px;
-            fill: #ccc;
-        }
-
         .node {
             cursor: pointer;
             padding: 3px 0;
@@ -73,7 +48,7 @@
             align-items: center;
             user-select: none;
             border-radius: 4px;
-            transition: background 0.2s;
+            transition: background .2s;
         }
 
         .node:hover {
@@ -111,12 +86,12 @@
             display: none;
         }
 
-        /* FAB 区域 */
+        /* FAB 按钮 */
         .fab {
             width: 56px;
             height: 56px;
             border-radius: 50%;
-            background-color: #6200ea;
+            background-color: #42b983;
             color: white;
             display: flex;
             align-items: center;
@@ -124,10 +99,11 @@
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
             cursor: pointer;
             font-size: 24px;
+            transition: background .2s;
         }
 
         .fab:hover {
-            background-color: #3700b3;
+            background-color: #2c9a6d;
         }
 
         /* 弹窗 */
@@ -137,7 +113,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, .5);
             display: none;
             align-items: center;
             justify-content: center;
@@ -153,7 +129,7 @@
             gap: 12px;
         }
 
-        .modal-content input {
+        .modal-content input[type="text"] {
             background: #2c2c2c;
             border: none;
             color: white;
@@ -175,12 +151,12 @@
         }
 
         .btn-primary {
-            background: #6200ea;
+            background: #42b983;
             color: white;
         }
 
         .btn-primary:hover {
-            background: #3700b3;
+            background: #2c9a6d;
         }
 
         .btn-secondary {
@@ -188,7 +164,65 @@
             color: white;
         }
 
-        /* Material Design Toast */
+        /* 文件上传按钮美化 */
+        .file-upload {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-upload {
+            background-color: #2c2c2c;
+            color: #42b983;
+            border: 1px solid #3a3a3a;
+            padding: 8px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all .2s;
+        }
+
+        .btn-upload:hover {
+            background-color: #3a3a3a;
+            color: #36a876;
+            border-color: #36a876;
+        }
+
+        .file-upload span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+            color: #aaa;
+            font-size: 13px;
+        }
+
+        /* 下载按钮 */
+        .btn-download {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #2c2c2c;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .2s;
+            padding: 0;
+        }
+
+        .btn-download:hover {
+            background: #444;
+        }
+
+        .btn-download svg {
+            width: 16px;
+            height: 16px;
+            fill: #ccc;
+        }
+
+        /* Toast */
         .toast {
             position: fixed;
             bottom: 24px;
@@ -198,9 +232,9 @@
             color: #fff;
             padding: 14px 24px;
             border-radius: 4px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .3);
             opacity: 0;
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            transition: opacity .3s, transform .3s;
             z-index: 1000;
             display: flex;
             align-items: center;
@@ -223,20 +257,17 @@
     </style>
 </head>
 <body>
-
 <div id="tree"></div>
 <div id="details"><em>请选择一个节点查看详情</em></div>
 
-<!-- FAB 上传和格式转化 -->
-<div style="position: fixed; bottom:24px; right:24px; display:flex; gap:12px; align-items:center;">
+<!-- FAB -->
+<div style="position:fixed; bottom:24px; right:24px; display:flex; gap:12px; align-items:center;">
     <div class="fab" id="formatFab" title="格式转化"><span class="material-icons">transform</span></div>
     <div class="fab" id="uploadFab" title="上传模块"><span class="material-icons">upload</span></div>
-    <div class="fab" id="settingFab" title="设置">
-        <span class="material-icons">settings</span>
-    </div>
+    <div class="fab" id="settingFab" title="设置"><span class="material-icons">settings</span></div>
 </div>
 
-<!-- 上传弹窗 -->
+<!-- 上传模块弹窗 -->
 <div class="modal" id="uploadModal">
     <div class="modal-content">
         <h3>上传模块</h3>
@@ -245,7 +276,11 @@
             <br/>
             <li>如果不知道如何制作 go 模块 zip，请点击左侧的格式转化按钮。</li>
         </ul>
-        <input type="file" id="zipFile" accept=".zip">
+        <div class="file-upload">
+            <button class="btn-upload">选择 ZIP 文件</button>
+            <span id="uploadFileName">未选择文件</span>
+            <input type="file" id="zipFile" accept=".zip" style="display:none;">
+        </div>
         <input type="text" id="pathInput" placeholder="模块名，例如：github.com/module/path">
         <input type="text" id="versionInput" placeholder="版本号，例如：v0.0.1-beta">
         <div class="modal-actions">
@@ -259,10 +294,13 @@
 <div class="modal" id="formatModal">
     <div class="modal-content">
         <h3>格式转化</h3>
-        <p style="color:#aaa; font-size:13px; margin:0 0 8px 0;">
-            请将 go 项目压缩为 zip 文件，根路径不要包含无关的层级结构，点击提交后会生成转化后的 zip 下载。
-        </p>
-        <input type="file" id="formatZip" accept=".zip">
+        <p style="color:#aaa; font-size:13px; margin:0 0 8px 0;">请将 go 项目压缩为 zip 文件，根路径不要包含无关的层级结构，点击提交后会生成转化后的
+            zip 下载。</p>
+        <div class="file-upload">
+            <button class="btn-upload">选择 ZIP 文件</button>
+            <span id="formatFileName">未选择文件</span>
+            <input type="file" id="formatZip" accept=".zip" style="display:none;">
+        </div>
         <input type="text" id="formatPath" placeholder="模块名，例如：github.com/module/path">
         <input type="text" id="formatVersion" placeholder="版本号，例如：v0.0.1-beta">
         <div class="modal-actions">
@@ -276,10 +314,6 @@
 <div id="toast" class="toast"></div>
 
 <script>
-    const settingFab = document.getElementById('settingFab');
-    settingFab.addEventListener('click', () => {
-        window.open('setting.html', '_blank');
-    });
     // ---------- Toast ----------
     let toastTimeout;
 
@@ -290,8 +324,263 @@
         void toast.offsetWidth;
         toast.classList.add('show');
         clearTimeout(toastTimeout);
-        toastTimeout = setTimeout(() => toast.classList.remove('show'), 5000); // 5 秒
+        toastTimeout = setTimeout(() => toast.classList.remove('show'), 5000);
     }
+
+    // ---------- FAB & 弹窗 ----------
+    document.getElementById('settingFab').addEventListener('click', () => window.open('pat.html', '_blank'));
+    const uploadModal = document.getElementById('uploadModal');
+    const formatModal = document.getElementById('formatModal');
+    document.getElementById('uploadFab').addEventListener('click', () => uploadModal.style.display = 'flex');
+    document.getElementById('formatFab').addEventListener('click', () => formatModal.style.display = 'flex');
+    document.getElementById('cancelUpload').addEventListener('click', () => uploadModal.style.display = 'none');
+    document.getElementById('cancelFormat').addEventListener('click', () => formatModal.style.display = 'none');
+    uploadModal.addEventListener('click', e => {
+        if (e.target === uploadModal) uploadModal.style.display = 'none';
+    });
+    formatModal.addEventListener('click', e => {
+        if (e.target === formatModal) formatModal.style.display = 'none';
+    });
+
+    // ---------- 文件上传按钮 ----------
+    const zipFileInput = document.getElementById('zipFile');
+    const uploadBtn = document.querySelector('#uploadModal .btn-upload');
+    const uploadFileName = document.getElementById('uploadFileName');
+    uploadBtn.addEventListener('click', () => zipFileInput.click());
+    zipFileInput.addEventListener('change', () => {
+        const file = zipFileInput.files[0];
+        uploadFileName.textContent = file ? file.name : '未选择文件';
+    });
+
+    const formatZipInput = document.getElementById('formatZip');
+    const formatBtn = document.querySelector('#formatModal .btn-upload');
+    const formatFileName = document.getElementById('formatFileName');
+    formatBtn.addEventListener('click', () => formatZipInput.click());
+    formatZipInput.addEventListener('change', () => {
+        const file = formatZipInput.files[0];
+        formatFileName.textContent = file ? file.name : '未选择文件';
+    });
+
+    // ---------- walk 接口和树 ----------
+    async function fetchData(url) {
+        const res = await fetch(url);
+        if (!res.ok) {
+            showToast(`请求失败 ${res.status}`);
+            return;
+        }
+        return await res.json();
+    }
+
+    function createNode(item, type) {
+        const li = document.createElement('li');
+        const div = document.createElement('div');
+        div.className = 'node';
+        const toggle = document.createElement('img');
+        toggle.className = 'toggle';
+        if (type === 'path') toggle.src = './img/unfold.svg'; else toggle.style.visibility = 'hidden';
+        div.appendChild(toggle);
+        const img = document.createElement('img');
+        img.className = 'icon';
+        img.src = type === 'path' ? './img/path.svg' : './img/gomod.svg';
+        div.appendChild(img);
+        div.appendChild(document.createTextNode(item.name || item.version));
+        li.appendChild(div);
+        const childrenContainer = document.createElement('ul');
+        childrenContainer.classList.add('hidden');
+        li.appendChild(childrenContainer);
+        div.addEventListener('click', async e => {
+            e.stopPropagation();
+            if (type === 'path') {
+                if (!childrenContainer.hasChildNodes()) {
+                    const data = await fetchData(`/api/gomod/walk?path=${encodeURIComponent(item.path)}`);
+                    (data.paths || []).forEach(p => childrenContainer.appendChild(createNode(p, 'path')));
+                    (data.modules || []).forEach(m => {
+                        m.path = item.path;
+                        childrenContainer.appendChild(createNode(m, 'module'));
+                    });
+                }
+                const hidden = childrenContainer.classList.toggle('hidden');
+                toggle.src = hidden ? './img/unfold.svg' : './img/fold.svg';
+            } else if (type === 'module') {
+                const stat = await fetchData(`/api/gomod/stat?path=${encodeURIComponent(item.path)}&version=${encodeURIComponent(item.version)}`);
+                showDetails(item, stat);
+            }
+        });
+        return li;
+    }
+
+    function formatDateTime(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const pad = n => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    async function showDetails(moduleItem, files) {
+        const details = document.getElementById('details');
+        details.innerHTML = `
+        <h2>${moduleItem.path}@${moduleItem.version}</h2>
+        <table>
+            <thead><tr><th>名称</th><th>权限</th><th>大小</th><th>修改时间</th><th>操作</th></tr></thead>
+            <tbody>
+            ${(files || []).map(f => `
+                <tr>
+                    <td>${f.name}</td>
+                    <td>${f.mode}</td>
+                    <td>${f.size || ''}</td>
+                    <td>${formatDateTime(f.modified_at)}</td>
+                    <td>
+                        <button class="btn-download" title="下载" data-name="${f.name}">
+                            <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18v12l4-4h-3V4h-2v6H8l4 4z"/></svg>
+                        </button>
+                    </td>
+                </tr>
+            `).join('')}
+            </tbody>
+        </table>
+        <div id="markdownPreview" class="markdown-body" style="margin-top:20px;"></div>
+        `;
+
+        details.querySelectorAll('.btn-download').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const fileName = btn.getAttribute('data-name');
+                const a = document.createElement('a');
+                a.href = `/api/gomod/file?path=${encodeURIComponent(moduleItem.path)}&name=${encodeURIComponent(fileName)}`;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            });
+        });
+
+        // Markdown 渲染
+        const mdFile = (files || []).const
+        mdFile = (files || []).find(f => f.name.toLowerCase().endsWith('.markdown'));
+        if (mdFile) {
+            try {
+                const url = `/api/gomod/file?path=${encodeURIComponent(moduleItem.path)}&name=${encodeURIComponent(mdFile.name)}`;
+                const res = await fetch(url);
+                if (!res.ok) return showToast(`Markdown 加载失败 ${res.status}`);
+                const buffer = await res.arrayBuffer();
+                const bytes = new Uint8Array(buffer);
+                let text = '';
+                if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) text = new TextDecoder('utf-16le').decode(bytes.subarray(2));
+                else if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) text = new TextDecoder('utf-16be').decode(bytes.subarray(2));
+                else text = new TextDecoder('utf-8').decode(bytes);
+
+                const md = window.markdownit({
+                    html: true,
+                    linkify: true,
+                    typographer: true,
+                    highlight: function (str, lang) {
+                        if (lang && hljs.getLanguage(lang)) {
+                            try {
+                                return hljs.highlight(str, {language: lang}).value
+                            } catch (_) {
+                            }
+                        }
+                        return hljs.highlightAuto(str).value;
+                    }
+                });
+                document.getElementById('markdownPreview').innerHTML = md.render(text);
+            } catch (err) {
+                showToast(`Markdown 加载失败: ${err.message}`);
+            }
+        }
+    }
+
+    async function init() {
+        const treeDiv = document.getElementById('tree');
+        treeDiv.innerHTML = '';
+        try {
+            const data = await fetchData('/api/gomod/walk?path=');
+            if (!data || ((!data.paths || data.paths.length === 0) && (!data.modules || data.modules.length === 0))) {
+                treeDiv.innerHTML = `<em>当前没有任何 Go 模块，请点击右下角上传一个模块吧</em>`;
+                document.getElementById('details').innerHTML = '';
+                return;
+            }
+            const ul = document.createElement('ul');
+            (data.paths || []).forEach(p => ul.appendChild(createNode(p, 'path')));
+            (data.modules || []).forEach(m => ul.appendChild(createNode(m, 'module')));
+            treeDiv.appendChild(ul);
+        } catch (err) {
+            showToast(`初始化失败: ${err.message}`);
+        }
+    }
+
+    init();
+
+    // ---------- 上传模块 ----------
+    document.getElementById('submitUpload').addEventListener('click', async () => {
+        const file = zipFileInput.files[0];
+        const path = document.getElementById('pathInput').value.trim();
+        const version = document.getElementById('versionInput').value.trim();
+        if (!file) return showToast('请先选择 zip 文件');
+        if (!path) return showToast('模块路径必填');
+        if (!version) return showToast('版本号必填');
+        showLoading('正在上传模块...');
+        const btn = document.getElementById('submitUpload');
+        btn.disabled = true;
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', path);
+            formData.append('version', version);
+            const res = await fetch('/api/gomod/upload', {method: 'PUT', body: formData});
+            if (!res.ok) return showToast(`上传失败: ${res.status}`);
+            showToast('上传成功');
+            uploadModal.style.display = 'none';
+            zipFileInput.value = '';
+            document.getElementById('pathInput').value = '';
+            document.getElementById('versionInput').value = '';
+            await init();
+        } catch (err) {
+            showToast(err.message);
+        } finally {
+            hideLoading();
+            btn.disabled = false;
+        }
+    });
+
+    // ---------- 格式转化 ----------
+    document.getElementById('submitFormat').addEventListener('click', async () => {
+        const file = formatZipInput.files[0];
+        const path = document.getElementById('formatPath').value.trim();
+        const version = document.getElementById('formatVersion').value.trim();
+        if (!file) return showToast('请先选择 zip 文件');
+        if (!path) return showToast('模块路径必填');
+        if (!version) return showToast('版本号必填');
+        showLoading('正在转化...');
+        const btn = document.getElementById('submitFormat');
+        btn.disabled = true;
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', path);
+            formData.append('version', version);
+            const res = await fetch('/api/gomod/format', {method: 'PUT', body: formData});
+            if (!res.ok) return showToast(`转化失败: ${res.status}`);
+            const blob = await res.blob();
+            const downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `${path.replace(/\//g, '_')}_${version}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(downloadUrl);
+            showToast('转化完成，已下载');
+            formatModal.style.display = 'none';
+            formatZipInput.value = '';
+            document.getElementById('formatPath').value = '';
+            document.getElementById('formatVersion').value = '';
+        } catch (err) {
+            showToast(err.message);
+        } finally {
+            hideLoading();
+            btn.disabled = false;
+        }
+    });
 
     // ---------- Loading ----------
     function showLoading(msg = '加载中...') {
@@ -301,8 +590,8 @@
             loading.id = 'loadingOverlay';
             Object.assign(loading.style, {
                 position: 'fixed',
-                top: '0',
-                left: '0',
+                top: 0,
+                left: 0,
                 width: '100%',
                 height: '100%',
                 background: 'rgba(0,0,0,0.3)',
@@ -323,311 +612,6 @@
         const loading = document.getElementById('loadingOverlay');
         if (loading) loading.style.display = 'none';
     }
-
-    // ---------- 错误统一处理 ----------
-    async function handleFetchError(res) {
-        let msg = `请求失败: ${res.status}`;
-        try {
-            const data = await res.json();
-            if (data && data.detail) msg = data.detail;
-        } catch (e) {
-        }
-        showToast(msg);
-    }
-
-    // ---------- 数据处理 ----------
-    async function fetchData(url) {
-        const res = await fetch(url);
-        if (!res.ok) return await handleFetchError(res);
-        return await res.json();
-    }
-
-    function createNode(item, type) {
-        const li = document.createElement('li');
-        const div = document.createElement('div');
-        div.className = 'node';
-        const toggle = document.createElement('img');
-        toggle.className = 'toggle';
-        if (type === 'path') toggle.src = './img/unfold.svg'; else toggle.style.visibility = 'hidden';
-        div.appendChild(toggle);
-        const img = document.createElement('img');
-        img.className = 'icon';
-        img.src = type === 'path' ? './img/path.svg' : './img/gomod.svg';
-        div.appendChild(img);
-        div.appendChild(document.createTextNode(item.name || item.version));
-        li.appendChild(div);
-        let childrenContainer = document.createElement('ul');
-        childrenContainer.classList.add('hidden');
-        li.appendChild(childrenContainer);
-        div.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            if (type === 'path') {
-                if (!childrenContainer.hasChildNodes()) {
-                    try {
-                        const data = await fetchData(`/api/gomod/walk?path=${encodeURIComponent(item.path)}`);
-                        (data.paths || []).forEach(p => childrenContainer.appendChild(createNode(p, 'path')));
-                        (data.modules || []).forEach(m => {
-                            m.path = item.path;
-                            childrenContainer.appendChild(createNode(m, 'module'));
-                        });
-                    } catch (err) {
-                        return;
-                    }
-                }
-                const hidden = childrenContainer.classList.toggle('hidden');
-                toggle.src = hidden ? './img/unfold.svg' : './img/fold.svg';
-            } else if (type === 'module') {
-                try {
-                    const stat = await fetchData(`/api/gomod/stat?path=${encodeURIComponent(item.path)}&version=${encodeURIComponent(item.version)}`);
-                    showDetails(item, stat);
-                } catch (err) {
-                    return;
-                }
-            }
-        });
-        return li;
-    }
-
-    function formatDateTime(iso) {
-        if (!iso) return '';
-        const d = new Date(iso);
-        const pad = n => n.toString().padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-    }
-
-    async function showDetails(moduleItem, files) {
-        const details = document.getElementById('details');
-        details.innerHTML = `
-        <h2>${moduleItem.path}@${moduleItem.version}</h2>
-        <table>
-            <thead>
-                <tr><th>名称</th><th>权限</th><th>大小</th><th>修改时间</th><th>操作</th></tr>
-            </thead>
-            <tbody>
-                ${(files || []).map(f => `
-                    <tr>
-                        <td>${f.name}</td>
-                        <td>${f.mode}</td>
-                        <td>${f.size ?? ''}</td>
-                        <td>${formatDateTime(f.modified_at)}</td>
-                        <td>
-                            <button class="btn-download" title="下载" data-name="${f.name}">
-                                <svg viewBox="0 0 24 24">
-                                    <path d="M5 20h14v-2H5v2zm7-18v12l4-4h-3V4h-2v6H8l4 4z"/>
-                                </svg>
-                            </button>
-                        </td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        <div id="markdownPreview" class="markdown-body" style="margin-top:20px;"></div>
-    `;
-
-        // 给下载按钮绑定事件
-        details.querySelectorAll('.btn-download').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const fileName = btn.getAttribute('data-name');
-                const downloadUrl = `/api/gomod/file?path=${encodeURIComponent(moduleItem.path)}&name=${encodeURIComponent(fileName)}`;
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-            });
-        });
-
-        // Markdown 渲染逻辑保持不变
-        const mdFile = (files || []).find(f => f.name.toLowerCase().endsWith('.markdown'));
-        if (!mdFile) return;
-
-        try {
-            const url = `/api/gomod/file?path=${encodeURIComponent(moduleItem.path)}&name=${encodeURIComponent(mdFile.name)}`;
-            const res = await fetch(url);
-            if (!res.ok) return await handleFetchError(res);
-
-            const buffer = await res.arrayBuffer();
-            const bytes = new Uint8Array(buffer);
-            let text = '';
-
-            // BOM 检测
-            if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
-                text = new TextDecoder('utf-16le').decode(bytes.subarray(2));
-            } else if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
-                text = new TextDecoder('utf-16be').decode(bytes.subarray(2));
-            } else {
-                text = new TextDecoder('utf-8').decode(bytes);
-            }
-
-            const md = window.markdownit({
-                html: true,
-                linkify: true,
-                typographer: true,
-                highlight: function (str, lang) {
-                    if (lang && hljs.getLanguage(lang)) {
-                        try {
-                            return hljs.highlight(str, {language: lang}).value;
-                        } catch (__) {
-                        }
-                    }
-                    return hljs.highlightAuto(str).value;
-                }
-            });
-
-            const mdContainer = document.getElementById('markdownPreview');
-            mdContainer.innerHTML = md.render(text);
-
-        } catch (err) {
-            showToast(`Markdown 加载失败: ${err.message}`);
-        }
-    }
-
-
-    async function init() {
-        const treeDiv = document.getElementById('tree');
-        treeDiv.innerHTML = '';
-        try {
-            const data = await fetchData('/api/gomod/walk?path=');
-            // 判断是否有数据
-            if (!data || (!data.paths || data.paths.length === 0) && (!data.modules || data.modules.length === 0)) {
-                treeDiv.innerHTML = `<em>当前没有任何 Go 模块，请点击右下角上传一个模块吧</em>`;
-                document.getElementById('details').innerHTML = '';
-                return;
-            }
-            const ul = document.createElement('ul');
-            (data.paths || []).forEach(p => ul.appendChild(createNode(p, 'path')));
-            (data.modules || []).forEach(m => ul.appendChild(createNode(m, 'module')));
-            treeDiv.appendChild(ul);
-        } catch (err) {
-        }
-    }
-
-    init();
-
-    // ---------- 上传模块 ----------
-    const uploadFab = document.getElementById('uploadFab');
-    const uploadModal = document.getElementById('uploadModal');
-    const cancelUpload = document.getElementById('cancelUpload');
-    const submitUpload = document.getElementById('submitUpload');
-    const zipFileInput = document.getElementById('zipFile');
-    const pathInput = document.getElementById('pathInput');
-    const versionInput = document.getElementById('versionInput');
-    uploadFab.addEventListener('click', () => uploadModal.style.display = 'flex');
-    cancelUpload.addEventListener('click', () => uploadModal.style.display = 'none');
-    uploadModal.addEventListener('click', (e) => {
-        if (e.target === uploadModal) uploadModal.style.display = 'none';
-    });
-
-    zipFileInput.addEventListener('change', async () => {
-        const file = zipFileInput.files[0];
-        if (!file) return;
-        if (file.type !== 'application/zip' && !file.name.endsWith('.zip')) {
-            showToast('请选择 zip 文件');
-            zipFileInput.value = '';
-            return;
-        }
-        showLoading('正在分析...');
-        const formData = new FormData();
-        formData.append('file', file);
-        try {
-            const res = await fetch('/api/gomod/sniff', {method: 'PUT', body: formData});
-            if (!res.ok) return await handleFetchError(res);
-            const data = await res.json();
-            if (data.path) pathInput.value = data.path;
-            if (data.version) versionInput.value = data.version;
-        } catch (err) {
-            showToast(err.message);
-        } finally {
-            hideLoading();
-        }
-    });
-
-    submitUpload.addEventListener('click', async () => {
-        const file = zipFileInput.files[0];
-        if (!file) return showToast('请先选择 zip 文件');
-        if (!pathInput.value.trim()) return showToast('模块路径必填');
-        if (!versionInput.value.trim()) return showToast('版本号必填');
-        showLoading('正在上传模块...');
-        submitUpload.disabled = true;
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('path', pathInput.value.trim());
-        formData.append('version', versionInput.value.trim());
-        try {
-            const res = await fetch('/api/gomod/upload', {method: 'PUT', body: formData});
-            if (!res.ok) return await handleFetchError(res);
-            showToast('上传成功');
-            uploadModal.style.display = 'none';
-            zipFileInput.value = '';
-            pathInput.value = '';
-            versionInput.value = '';
-            await init();
-        } catch (err) {
-            showToast(err.message);
-        } finally {
-            hideLoading();
-            submitUpload.disabled = false;
-        }
-    });
-
-    // ---------- 格式转化模块 ----------
-    const formatFab = document.getElementById('formatFab');
-    const formatModal = document.getElementById('formatModal');
-    const cancelFormat = document.getElementById('cancelFormat');
-    const submitFormat = document.getElementById('submitFormat');
-    const formatZipInput = document.getElementById('formatZip');
-    const formatPathInput = document.getElementById('formatPath');
-    const formatVersionInput = document.getElementById('formatVersion');
-
-    formatFab.addEventListener('click', () => formatModal.style.display = 'flex');
-    cancelFormat.addEventListener('click', () => formatModal.style.display = 'none');
-    formatModal.addEventListener('click', (e) => {
-        if (e.target === formatModal) formatModal.style.display = 'none';
-    });
-
-    submitFormat.addEventListener('click', async () => {
-        const file = formatZipInput.files[0];
-        const path = formatPathInput.value.trim();
-        const version = formatVersionInput.value.trim();
-        if (!file) return showToast('请先选择 zip 文件');
-        if (!path) return showToast('模块路径必填');
-        if (!version) return showToast('版本号必填');
-        if (file.type !== 'application/zip' && !file.name.endsWith('.zip')) {
-            showToast('请选择 zip 文件');
-            formatZipInput.value = '';
-            return;
-        }
-        showLoading('正在转化...');
-        submitFormat.disabled = true;
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('path', path);
-            formData.append('version', version);
-            const res = await fetch('/api/gomod/format', {method: 'PUT', body: formData});
-            if (!res.ok) return await handleFetchError(res);
-            const blob = await res.blob();
-            const downloadUrl = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = `${path.replace(/\//g, '_')}_${version}.zip`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(downloadUrl);
-            showToast('转化完成，已下载');
-            formatModal.style.display = 'none';
-            formatZipInput.value = '';
-            formatPathInput.value = '';
-            formatVersionInput.value = '';
-        } catch (err) {
-            showToast(err.message);
-        } finally {
-            hideLoading();
-            submitFormat.disabled = false;
-        }
-    });
 </script>
 </body>
 </html>

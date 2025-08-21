@@ -2,17 +2,18 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Access Tokens 管理</title>
+    <title>令牌管理</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
     <!-- flatpickr dark theme -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
     <style>
         body {
-            background-color: #121212;
-            color: #ccc;
-            font-family: 'IBM Plex Mono', Consolas, monospace;
+            background-color: #1a1a1a;
+            color: #ddd;
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
             margin: 0;
             display: flex;
             justify-content: center;
@@ -20,24 +21,26 @@
         }
 
         .container {
-            background: #1e1e1e;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-            width: 600px;
+            background: #242424;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            width: 680px;
         }
 
         h1 {
-            margin: 0 0 16px;
-            font-size: 20px;
+            margin: 0 0 20px;
+            font-size: 22px;
+            font-weight: 600;
             text-align: center;
+            color: #42b883;
         }
 
         .table-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
 
         table {
@@ -47,39 +50,46 @@
         }
 
         th, td {
-            padding: 8px;
+            padding: 10px;
             border-bottom: 1px solid #333;
         }
 
         th {
             text-align: left;
-            font-weight: normal;
+            font-weight: 500;
+            color: #f8f8f8;
+        }
+
+        td {
+            color: #ddd;
         }
 
         .btn {
-            padding: 4px 10px;
+            padding: 6px 14px;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 14px;
+            transition: background 0.2s ease;
         }
 
         .btn-primary {
-            background: #6200ea;
-            color: white;
+            background: #42b883;
+            color: #1a1a1a;
+            font-weight: 500;
         }
 
         .btn-primary:hover {
-            background: #3700b3;
+            background: #369972;
         }
 
         .btn-danger {
-            background: #d32f2f;
+            background: #e63946;
             color: white;
         }
 
         .btn-danger:hover {
-            background: #9a0007;
+            background: #c53030;
         }
 
         /* Modal */
@@ -96,29 +106,42 @@
             z-index: 1000;
         }
 
+        /* 优化新增 Token Modal */
         .modal-content {
-            background: #1e1e1e;
-            padding: 16px;
-            border-radius: 6px;
-            min-width: 340px;
+            background: #2c2c2c;
+            padding: 24px;
+            border-radius: 12px;
+            min-width: 360px;
+            max-width: 480px; /* 限制最大宽度，防止过长溢出 */
+            width: 90%; /* 自适应屏幕 */
             font-size: 14px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        .modal-content input[type="text"],
-        .modal-content input[type="date"] {
+        .modal-content input[type="text"] {
             width: 100%;
-            background: #2c2c2c;
-            color: #fff;
-            border: 2px solid transparent;
-            padding: 6px 10px; /* 左右统一内边距 */
-            border-radius: 4px;
-            margin-bottom: 10px;
-            font-size: 13px;
+            min-width: 0; /* 让 flex 布局时不会溢出 */
+            background: #1a1a1a;
+            color: #f8f8f8;
+            border: 1px solid #444;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
             outline: none;
+            box-sizing: border-box; /* 防止 padding 导致溢出 */
         }
 
         .modal-content input:focus {
-            border-color: #6200ea;
+            border-color: #42b883;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: #42b883;
         }
 
         .modal-actions {
@@ -131,14 +154,15 @@
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%) translateY(20px);
-            background: #323232;
-            color: #fff;
+            background: #42b883;
+            color: #1a1a1a;
             padding: 10px 18px;
-            border-radius: 4px;
+            border-radius: 6px;
             opacity: 0;
             transition: opacity 0.3s ease, transform 0.3s ease;
             z-index: 2000;
             font-size: 13px;
+            font-weight: 500;
         }
 
         .toast.show {
@@ -147,24 +171,38 @@
         }
 
         .token-command {
-            background: #2c2c2c;
-            color: #ffab40;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-family: 'IBM Plex Mono', monospace;
+            background: #1f1f1f;
+            color: #ddd;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
             font-size: 13px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            margin-bottom: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+            border: 1px solid #333;
+            overflow: hidden;
         }
 
         .token-command code {
-            user-select: all;
-            flex: 1;
+            flex: 1 1 auto;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #42b883;
+        }
+
+        .copy-icon {
+            flex: 0 0 auto;
+            margin-left: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            color: #ddd;
         }
 
         .copy-icon {
@@ -174,7 +212,7 @@
             justify-content: center;
             width: 20px;
             height: 20px;
-            color: #ffab40;
+            color: #ddd;
         }
 
         .copy-icon svg {
@@ -182,7 +220,26 @@
             height: 18px;
             fill: currentColor;
         }
+
+        /* 输入框和弹窗保持一致 */
+        #newTokenExpire {
+            width: 100%;
+            min-width: 0;
+            background: #1a1a1a;
+            color: #eee;
+            border: 1px solid #444;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        #newTokenExpire:focus {
+            border-color: #42b883;
+        }
     </style>
+
 </head>
 <body>
 <div class="container">
@@ -243,8 +300,22 @@
         dateFormat: "Y-m-d",
         minDate: "today",
         defaultDate: null,
+        locale: "zh",
         allowInput: false,
-        theme: "dark"
+        theme: "dark",  // 使用 dark 主题
+        onReady: function (selectedDates, dateStr, instance) {
+            // 自定义样式，使背景和 Vue-dark modal 统一
+            const cal = instance.calendarContainer;
+            cal.style.background = '#2c2c2c';
+            cal.style.color = '#eee';
+            cal.style.border = '1px solid #444';
+        },
+        onMonthChange: function (selectedDates, dateStr, instance) {
+            instance.calendarContainer.style.background = '#2c2c2c';
+        },
+        onYearChange: function (selectedDates, dateStr, instance) {
+            instance.calendarContainer.style.background = '#2c2c2c';
+        },
     });
 
     function showToast(msg) {
@@ -381,38 +452,49 @@
         modal.className = 'modal token-result';
         modal.style.display = 'flex';
         modal.innerHTML = `
-            <div class="modal-content">
-                <h3>新增 Token 成功</h3>
-                <ul>
-                    <li>请妥善保存，以后将不再显示</li>
-                    <li>请勿泄漏 Token</li>
-                </ul>
+        <div class="modal-content">
+            <h3>新增 Token 成功</h3>
+            <ul>
+                <li>请妥善保存，以后将不再显示</li>
+                <li>请勿泄漏 Token</li>
+            </ul>
 
-                <div class="token-command" title="${token}">
-                    <code>${token}</code>
-                    <span class="copy-icon" onclick="copyText('${token}')">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                        </svg>
-                    </span>
-                </div>
-
-                <div class="token-command" title="${goproxyCmd}">
-                    <code>${goproxyCmd}</code>
-                    <span class="copy-icon" onclick="copyText(\`${goproxyCmd}\`)">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                        </svg>
-                    </span>
-                </div>
-
-                <div class="modal-actions">
-                    <button class="btn btn-primary" onclick="this.closest('.modal').remove()">关闭</button>
-                </div>
+            <div class="token-command" title="${token}" data-copy="${token}">
+                <code>${token}</code>
+                <span class="copy-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                    </svg>
+                </span>
             </div>
-        `;
+
+            <div class="token-command" title="${goproxyCmd}" data-copy="${goproxyCmd}">
+                <code style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${goproxyCmd}</code>
+                <span class="copy-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                    </svg>
+                </span>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="this.closest('.modal').remove()">关闭</button>
+            </div>
+        </div>
+    `;
         document.body.appendChild(modal);
+
+        // 绑定复制事件
+        modal.querySelectorAll('.copy-icon').forEach(el => {
+            el.addEventListener('click', () => {
+                const text = el.closest('.token-command').getAttribute('data-copy');
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('已复制到剪贴板');
+                });
+            });
+        });
     }
+
 
     function copyText(text) {
         navigator.clipboard.writeText(text).then(() => {
