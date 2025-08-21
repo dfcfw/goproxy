@@ -50,7 +50,7 @@ func Exec(ctx context.Context, cfg *config.Config) error {
 	casClient := casauth.NewClient(casCfg, httpClient, log)
 
 	const moddir = "resources/mod/"
-	adminSvc := service.NewAdmin(qry, log)
+	userSvc := service.NewUser(qry, log)
 	accessTokenSvc := service.NewAccessToken(qry, log)
 	gomodSvc := service.NewGomod(moddir, log)
 
@@ -59,14 +59,15 @@ func Exec(ctx context.Context, cfg *config.Config) error {
 	authMiddle := middle.NewAuth(sessValid)
 
 	restAPIs := []shipx.RouteRegister{
-		restapi.NewAdmin(adminSvc),
 		restapi.NewAccessToken(accessTokenSvc),
 		restapi.NewGomod(gomodSvc),
 		restapi.NewSession(),
+		restapi.NewUser(userSvc),
 		restapi.NewProxy(moddir),
 	}
 
 	shipHTTP := ship.Default()
+	shipHTTP.NotFound = shipx.NotFound
 	shipHTTP.HandleError = shipx.HandleError
 	rootRGB := shipHTTP.Group("/")
 	for k, v := range srvCfg.Static {

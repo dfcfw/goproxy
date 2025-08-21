@@ -5,48 +5,64 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/dfcfw/goproxy/contract/errcode"
 	"github.com/dfcfw/goproxy/datalayer/model"
 	"github.com/dfcfw/goproxy/datalayer/query"
 )
 
-func NewAdmin(qry *query.Query, log *slog.Logger) *Admin {
+func NewUser(qry *query.Query, log *slog.Logger) *User {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	tbl := qry.Admin
+	tbl := qry.User
 	dao := tbl.WithContext(ctx)
 	if cnt, _ := dao.Count(); cnt == 0 {
-		_ = dao.Create(&model.Admin{JobNumber: "200858"})
+		_ = dao.Create(&model.User{JobNumber: "200858", Admin: true})
 	}
 
-	return &Admin{
+	return &User{
 		qry: qry,
 		log: log,
 	}
 }
 
-type Admin struct {
+type User struct {
 	qry *query.Query
 	log *slog.Logger
 }
 
-func (adm *Admin) List(ctx context.Context) ([]*model.Admin, error) {
-	tbl := adm.qry.Admin
+func (usr *User) List(ctx context.Context) ([]*model.User, error) {
+	tbl := usr.qry.User
 	dao := tbl.WithContext(ctx)
 
 	return dao.Find()
 }
 
-func (adm *Admin) Create(ctx context.Context, jobNumber string) error {
-	tbl := adm.qry.Admin
+func (usr *User) Create(ctx context.Context, jobNumber string, admin bool) error {
+	tbl := usr.qry.User
 	dao := tbl.WithContext(ctx)
-	dat := &model.Admin{JobNumber: jobNumber}
+	dat := &model.User{JobNumber: jobNumber, Admin: admin}
 
 	return dao.Create(dat)
 }
 
-func (adm *Admin) Delete(ctx context.Context, jobNumber string) error {
-	tbl := adm.qry.Admin
+func (usr *User) Update(ctx context.Context, jobNumber string, admin bool) error {
+	tbl := usr.qry.User
+	dao := tbl.WithContext(ctx)
+
+	ret, err := dao.Where(tbl.JobNumber.Eq(jobNumber)).
+		UpdateColumnSimple(tbl.Admin.Value(admin))
+	if err != nil {
+		return err
+	} else if ret.RowsAffected == 0 {
+		return errcode.ErrDataNotExists
+	}
+
+	return nil
+}
+
+func (usr *User) Delete(ctx context.Context, jobNumber string) error {
+	tbl := usr.qry.User
 	dao := tbl.WithContext(ctx)
 	_, err := dao.Where(tbl.JobNumber.Eq(jobNumber)).Delete()
 

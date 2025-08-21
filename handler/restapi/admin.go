@@ -9,29 +9,30 @@ import (
 	"github.com/xgfone/ship/v5"
 )
 
-func NewAdmin(svc *service.Admin) *Admin {
-	return &Admin{
+func NewUser(svc *service.User) *User {
+	return &User{
 		svc: svc,
 	}
 }
 
-type Admin struct {
-	svc *service.Admin
+type User struct {
+	svc *service.User
 }
 
-func (adm *Admin) RegisterRoute(r *ship.RouteGroupBuilder) error {
-	r.Route("/api/admins").
-		Data(shipx.NewRouteInfo("查看管理员列表").Map()).GET(adm.list)
-	r.Route("/api/admin").
-		Data(shipx.NewRouteInfo("创建管理员").Map()).POST(adm.create).
-		Data(shipx.NewRouteInfo("删除管理员").Map()).DELETE(adm.delete)
+func (usr *User) RegisterRoute(r *ship.RouteGroupBuilder) error {
+	r.Route("/api/users").
+		Data(shipx.NewRouteInfo("查看用户列表").Map()).GET(usr.list)
+	r.Route("/api/user").
+		Data(shipx.NewRouteInfo("创建用户").Map()).POST(usr.create).
+		Data(shipx.NewRouteInfo("修改用户").Map()).PUT(usr.update).
+		Data(shipx.NewRouteInfo("删除用户").Map()).DELETE(usr.delete)
 
 	return nil
 }
 
-func (adm *Admin) list(c *ship.Context) error {
+func (usr *User) list(c *ship.Context) error {
 	ctx := c.Request().Context()
-	ret, err := adm.svc.List(ctx)
+	ret, err := usr.svc.List(ctx)
 	if err != nil {
 		return err
 	}
@@ -39,22 +40,34 @@ func (adm *Admin) list(c *ship.Context) error {
 	return c.JSON(http.StatusOK, ret)
 }
 
-func (adm *Admin) create(c *ship.Context) error {
-	req := new(request.JobNumber)
+func (usr *User) create(c *ship.Context) error {
+	req := new(request.UserUpsert)
 	if err := c.Bind(req); err != nil {
 		return err
 	}
 	ctx := c.Request().Context()
+	jobNumber, admin := req.JobNumber, req.Admin
 
-	return adm.svc.Create(ctx, req.JobNumber)
+	return usr.svc.Create(ctx, jobNumber, admin)
 }
 
-func (adm *Admin) delete(c *ship.Context) error {
+func (usr *User) update(c *ship.Context) error {
+	req := new(request.UserUpsert)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+	ctx := c.Request().Context()
+	jobNumber, admin := req.JobNumber, req.Admin
+
+	return usr.svc.Update(ctx, jobNumber, admin)
+}
+
+func (usr *User) delete(c *ship.Context) error {
 	req := new(request.JobNumber)
 	if err := c.BindQuery(req); err != nil {
 		return err
 	}
 	ctx := c.Request().Context()
 
-	return adm.svc.Delete(ctx, req.JobNumber)
+	return usr.svc.Delete(ctx, req.JobNumber)
 }

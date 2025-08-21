@@ -19,7 +19,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:          db,
 		AccessToken: newAccessToken(db, opts...),
-		Admin:       newAdmin(db, opts...),
+		User:        newUser(db, opts...),
 	}
 }
 
@@ -27,7 +27,7 @@ type Query struct {
 	db *gorm.DB
 
 	AccessToken accessToken
-	Admin       admin
+	User        user
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -36,7 +36,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
 		AccessToken: q.AccessToken.clone(db),
-		Admin:       q.Admin.clone(db),
+		User:        q.User.clone(db),
 	}
 }
 
@@ -52,19 +52,19 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
 		AccessToken: q.AccessToken.replaceDB(db),
-		Admin:       q.Admin.replaceDB(db),
+		User:        q.User.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
 	AccessToken *accessTokenDo
-	Admin       *adminDo
+	User        *userDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
 		AccessToken: q.AccessToken.WithContext(ctx),
-		Admin:       q.Admin.WithContext(ctx),
+		User:        q.User.WithContext(ctx),
 	}
 }
 

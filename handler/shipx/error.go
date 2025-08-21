@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dfcfw/goproxy/contract/errcode"
 	"github.com/dfcfw/goproxy/contract/problem"
-	"github.com/go-sql-driver/mysql"
 	"github.com/xgfone/ship/v5"
 )
 
-func NotFound(*ship.Context) error {
-	return ship.ErrNotFound
+func NotFound(_ *ship.Context) error {
+	return errcode.ErrNotFound
 }
 
 func HandleError(c *ship.Context, e error) {
@@ -66,8 +66,6 @@ func UnwrapError(err error) (statusCode int, title string, detail string) {
 		limit := strconv.FormatInt(ce.Limit, 10)
 		detail = "请求报文超过 " + limit + " 个字节限制"
 		statusCode = http.StatusRequestEntityTooLarge
-	case *mysql.MySQLError:
-		detail = mySQLError(ce)
 	default:
 		switch {
 		case errors.Is(err, ship.ErrSessionNotExist), errors.Is(err, ship.ErrInvalidSession):
@@ -79,14 +77,4 @@ func UnwrapError(err error) (statusCode int, title string, detail string) {
 	}
 
 	return
-}
-
-// mySQLError: https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-func mySQLError(e *mysql.MySQLError) string {
-	switch e.Number {
-	case 1062:
-		return "数据已存在"
-	default:
-		return "数据操作错误"
-	}
 }

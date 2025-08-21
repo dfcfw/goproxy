@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dfcfw/goproxy/business/jwtoken"
+	"github.com/dfcfw/goproxy/datalayer/model"
 	"github.com/dfcfw/goproxy/datalayer/query"
 	"github.com/dfcfw/goproxy/integration/casauth"
 )
@@ -54,19 +55,26 @@ func (idt *identValid) ValidPAT(ctx context.Context, token string) (*Userinfo, e
 	}
 
 	jobNumber := dat.JobNumber
-	admin := idt.isAdmin(ctx, jobNumber)
-	info := &Userinfo{JobNumber: jobNumber, Admin: admin}
+	user, err := idt.valid(ctx, jobNumber)
+	if err != nil {
+		return nil, err
+	}
+	info := &Userinfo{JobNumber: jobNumber, Admin: user.Admin}
 
 	return info, nil
 }
 
 func (idt *identValid) ValidCAS(ctx context.Context, name, passwd string) (*Userinfo, error) {
-	if err := idt.cas.Auth(ctx, name, passwd); err != nil {
+	user, err := idt.valid(ctx, name)
+	if err != nil {
 		return nil, err
 	}
 
-	admin := idt.isAdmin(ctx, name)
-	info := &Userinfo{JobNumber: name, Admin: admin}
+	if err = idt.cas.Auth(ctx, name, passwd); err != nil {
+		return nil, err
+	}
+
+	info := &Userinfo{JobNumber: name, Admin: user.Admin}
 
 	return info, nil
 }
@@ -78,8 +86,11 @@ func (idt *identValid) ValidJWT(ctx context.Context, token string) (*Userinfo, e
 	}
 
 	jobNumber := claim.JobNumber
-	admin := idt.isAdmin(ctx, jobNumber)
-	info := &Userinfo{JobNumber: jobNumber, Admin: admin}
+	user, err := idt.valid(ctx, jobNumber)
+	if err != nil {
+		return nil, err
+	}
+	info := &Userinfo{JobNumber: jobNumber, Admin: user.Admin}
 
 	return info, nil
 }
@@ -88,11 +99,9 @@ func (idt *identValid) SignJWT(jobNumber string, period time.Duration) (string, 
 	return idt.tok.Sign(jobNumber, period)
 }
 
-func (idt *identValid) isAdmin(ctx context.Context, jobNumber string) bool {
-	tbl := idt.qry.Admin
+func (idt *identValid) valid(ctx context.Context, jobNumber string) (*model.User, error) {
+	tbl := idt.qry.User
 	dao := tbl.WithContext(ctx)
 
-	cnt, _ := dao.Where(tbl.JobNumber.Eq(jobNumber)).Count()
-
-	return cnt > 0
+	return dao.Where(tbl.JobNumber.Eq(jobNumber)).First()
 }
