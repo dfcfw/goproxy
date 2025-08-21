@@ -342,14 +342,71 @@
         if (e.target === formatModal) formatModal.style.display = 'none';
     });
 
-    // ---------- 文件上传按钮 ----------
     const zipFileInput = document.getElementById('zipFile');
     const uploadBtn = document.querySelector('#uploadModal .btn-upload');
     const uploadFileName = document.getElementById('uploadFileName');
+
+    // 打开文件选择器
     uploadBtn.addEventListener('click', () => zipFileInput.click());
-    zipFileInput.addEventListener('change', () => {
+
+    // 文件选择后处理
+    zipFileInput.addEventListener('change', async () => {
         const file = zipFileInput.files[0];
         uploadFileName.textContent = file ? file.name : '未选择文件';
+
+        if (!file) return;
+
+        // 自动 sniff ZIP 文件
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch('/api/gomod/sniff', {
+                method: 'PUT',
+                body: formData
+            });
+            if (!res.ok) return; // 出错则忽略
+            const data = await res.json();
+            if (data.path) document.getElementById('pathInput').value = data.path;
+            if (data.version) document.getElementById('versionInput').value = data.version;
+        } catch (err) {
+            // 忽略错误
+        }
+    });
+
+    // 上传模块
+    document.getElementById('submitUpload').addEventListener('click', async () => {
+        const file = zipFileInput.files[0];
+        const path = document.getElementById('pathInput').value.trim();
+        const version = document.getElementById('versionInput').value.trim();
+        if (!file) return showToast('请先选择 zip 文件');
+        if (!path) return showToast('模块路径必填');
+        if (!version) return showToast('版本号必填');
+
+        showLoading('正在上传模块...');
+        const btn = document.getElementById('submitUpload');
+        btn.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', path);
+            formData.append('version', version);
+
+            const res = await fetch('/api/gomod/upload', {method: 'PUT', body: formData});
+            if (!res.ok) return showToast(`上传失败: ${res.status}`);
+
+            showToast('上传成功');
+            uploadModal.style.display = 'none';
+            zipFileInput.value = '';
+            document.getElementById('pathInput').value = '';
+            document.getElementById('versionInput').value = '';
+            await init(); // 重新加载树
+        } catch (err) {
+            showToast(err.message);
+        } finally {
+            hideLoading();
+            btn.disabled = false;
+        }
     });
 
     const formatZipInput = document.getElementById('formatZip');
@@ -454,8 +511,7 @@
         });
 
         // Markdown 渲染
-        const mdFile = (files || []).const
-        mdFile = (files || []).find(f => f.name.toLowerCase().endsWith('.markdown'));
+        const mdFile = (files || []).find(f => f.name.toLowerCase().endsWith('.markdown'));
         if (mdFile) {
             try {
                 const url = `/api/gomod/file?path=${encodeURIComponent(moduleItem.path)}&name=${encodeURIComponent(mdFile.name)}`;
