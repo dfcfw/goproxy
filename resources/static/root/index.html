@@ -231,6 +231,9 @@
 <div style="position: fixed; bottom:24px; right:24px; display:flex; gap:12px; align-items:center;">
     <div class="fab" id="formatFab" title="格式转化"><span class="material-icons">transform</span></div>
     <div class="fab" id="uploadFab" title="上传模块"><span class="material-icons">upload</span></div>
+    <div class="fab" id="settingFab" title="设置">
+        <span class="material-icons">settings</span>
+    </div>
 </div>
 
 <!-- 上传弹窗 -->
@@ -273,6 +276,10 @@
 <div id="toast" class="toast"></div>
 
 <script>
+    const settingFab = document.getElementById('settingFab');
+    settingFab.addEventListener('click', () => {
+        window.open('setting.html', '_blank');
+    });
     // ---------- Toast ----------
     let toastTimeout;
 

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Access Tokens 管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css">
+    <!-- flatpickr dark theme -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ccc;
+            font-family: 'IBM Plex Mono', Consolas, monospace;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 40px 0;
+        }
+
+        .container {
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+            width: 600px;
+        }
+
+        h1 {
+            margin: 0 0 16px;
+            font-size: 20px;
+            text-align: center;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 8px;
+            border-bottom: 1px solid #333;
+        }
+
+        th {
+            text-align: left;
+            font-weight: normal;
+        }
+
+        .btn {
+            padding: 4px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .btn-primary {
+            background: #6200ea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #3700b3;
+        }
+
+        .btn-danger {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #9a0007;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #1e1e1e;
+            padding: 16px;
+            border-radius: 6px;
+            min-width: 340px;
+            font-size: 14px;
+        }
+
+        .modal-content input[type="text"],
+        .modal-content input[type="date"] {
+            width: 100%;
+            background: #2c2c2c;
+            color: #fff;
+            border: 2px solid transparent;
+            padding: 6px 10px; /* 左右统一内边距 */
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .modal-content input:focus {
+            border-color: #6200ea;
+        }
+
+        .modal-actions {
+            text-align: right;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #323232;
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 2000;
+            font-size: 13px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .token-command {
+            background: #2c2c2c;
+            color: #ffab40;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .token-command code {
+            user-select: all;
+            flex: 1;
+        }
+
+        .copy-icon {
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            color: #ffab40;
+        }
+
+        .copy-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Access Tokens 管理</h1>
+    <div class="table-header">
+        <span>Tokens</span>
+        <button class="btn btn-primary" onclick="openAddModal()">新增</button>
+    </div>
+    <table id="tokensTable">
+        <thead>
+        <tr>
+            <th>名字</th>
+            <th>过期时间</th>
+            <th style="width:80px;">操作</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<!-- 新增 Token Modal -->
+<div class="modal" id="addModal">
+    <div class="modal-content">
+        <h3>新增 Token</h3>
+        <input type="text" id="newTokenName" placeholder="请输入名称" oninput="debouncedValidateName()">
+        <input type="text" id="newTokenExpire" placeholder="请选择过期日期（可选）">
+        <div class="modal-actions">
+            <button class="btn btn-primary" onclick="addToken()">提交</button>
+            <button class="btn" onclick="closeAddModal()">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认 Modal -->
+<div class="modal" id="deleteModal">
+    <div class="modal-content">
+        <h3>确认删除</h3>
+        <p id="deleteMessage"></p>
+        <div class="modal-actions">
+            <button class="btn btn-danger" onclick="confirmDelete()">删除</button>
+            <button class="btn" onclick="closeDeleteModal()">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+    let deleteTargetName = null;
+    let toastTimeout;
+    let debounceTimer;
+
+    const expireInput = document.getElementById('newTokenExpire');
+
+    // 初始化 flatpickr dark 日期选择器
+    flatpickr("#newTokenExpire", {
+        dateFormat: "Y-m-d",
+        minDate: "today",
+        defaultDate: null,
+        allowInput: false,
+        theme: "dark"
+    });
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    async function loadTokens() {
+        const res = await fetch('/api/access-tokens');
+        if (!res.ok) return;
+        const data = await res.json();
+        const tbody = document.querySelector('#tokensTable tbody');
+        tbody.innerHTML = '';
+
+        const now = new Date();
+
+        data.forEach(item => {
+            const tr = document.createElement('tr');
+
+            // 处理 expired_at
+            let expireText = '永不过期';
+            let colorStyle = '';
+
+            if (item.expired_at) {
+                const expireDate = new Date(item.expired_at);
+                if (expireDate.getTime() === 0) {
+                    expireText = '永不过期';
+                } else {
+                    expireText = expireDate.toLocaleDateString();
+                    const diffDays = (expireDate - now) / (1000 * 60 * 60 * 24);
+                    if (diffDays < 0) {
+                        colorStyle = 'color:red;';
+                    } else if (diffDays <= 30) {
+                        colorStyle = 'color:yellow;';
+                    }
+                }
+            }
+
+            tr.innerHTML = `
+            <td>${item.name}</td>
+            <td style="${colorStyle}">${expireText}</td>
+            <td>
+                <button class="btn btn-danger" onclick="openDeleteModal('${item.name}')">删除</button>
+            </td>
+        `;
+            tbody.appendChild(tr);
+        });
+    }
+
+
+    function openAddModal() {
+        document.getElementById('newTokenName').value = '';
+        document.getElementById('newTokenName').style.borderColor = 'transparent';
+        expireInput.value = '';
+        document.getElementById('addModal').style.display = 'flex';
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').style.display = 'none';
+    }
+
+    function debouncedValidateName() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(validateName, 400);
+    }
+
+    async function validateName() {
+        const input = document.getElementById('newTokenName');
+        const name = input.value.trim();
+        if (!name) {
+            input.style.borderColor = 'transparent';
+            return;
+        }
+        const res = await fetch(`/api/access-token/valid?name=${encodeURIComponent(name)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        input.style.borderColor = data.succeed ? 'green' : 'red';
+    }
+
+    async function addToken() {
+        const nameInput = document.getElementById('newTokenName');
+        const name = nameInput.value.trim();
+        if (!name) {
+            showToast('请输入名称');
+            return;
+        }
+
+        // 验证名称合法性
+        const resCheck = await fetch(`/api/access-token/valid?name=${encodeURIComponent(name)}`);
+        if (resCheck.ok) {
+            const dataCheck = await resCheck.json();
+            if (!dataCheck.succeed) {
+                showToast('名称不合法或已存在');
+                return;
+            }
+        }
+
+        let expired_at = null;
+        if (expireInput.value) {
+            const localDate = new Date(expireInput.value + 'T00:00:00');
+            expired_at = localDate.toISOString();
+        }
+
+        const res = await fetch('/api/access-token', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, expired_at})
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            closeAddModal();
+            showTokenResult(data);
+            loadTokens();
+        } else {
+            const dat = await res.json();
+            showToast(dat.detail);
+        }
+    }
+
+    function showTokenResult(data) {
+        const token = data.token;
+        const proto = location.protocol.replace(':', '');
+        const goproxyCmd = `go env -w GOPROXY=${proto}://${token}@${location.host}/private,https://goproxy.cn,direct`;
+
+        document.querySelectorAll('.modal.token-result').forEach(m => m.remove());
+
+        const modal = document.createElement('div');
+        modal.className = 'modal token-result';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h3>新增 Token 成功</h3>
+                <ul>
+                    <li>请妥善保存，以后将不再显示</li>
+                    <li>请勿泄漏 Token</li>
+                </ul>
+
+                <div class="token-command" title="${token}">
+                    <code>${token}</code>
+                    <span class="copy-icon" onclick="copyText('${token}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                        </svg>
+                    </span>
+                </div>
+
+                <div class="token-command" title="${goproxyCmd}">
+                    <code>${goproxyCmd}</code>
+                    <span class="copy-icon" onclick="copyText(\`${goproxyCmd}\`)">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                        </svg>
+                    </span>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-primary" onclick="this.closest('.modal').remove()">关闭</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    function copyText(text) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('已复制到剪贴板');
+        });
+    }
+
+    function openDeleteModal(name) {
+        deleteTargetName = name;
+        document.getElementById('deleteMessage').textContent = `确定要删除 Token "${name}" 吗？`;
+        document.getElementById('deleteModal').style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').style.display = 'none';
+    }
+
+    async function confirmDelete() {
+        if (!deleteTargetName) return;
+        const res = await fetch(`/api/access-token?name=${encodeURIComponent(deleteTargetName)}`, {method: 'DELETE'});
+        if (res.ok) {
+            showToast('删除成功');
+            closeDeleteModal();
+            await loadTokens();
+        } else {
+            showToast('删除失败');
+        }
+    }
+
+    loadTokens();
+</script>
+</body>
+</html>

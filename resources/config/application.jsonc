@@ -1,0 +1,12 @@
+{
+  "server": {
+    "addr": ":8080",
+    "static": {
+      "/": "resources/static/root/"
+    },
+    "cas": "https://example.com/path?foo=bar"
+  },
+  "database": {
+    "dsn": "file:resources/sqlite/app.db?_busy_timeout=5000"
+  }
+}

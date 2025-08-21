@@ -34,3 +34,8 @@ go.work.sum
 
 resources/mod/
 resources/test/
+
+.crash.txt
+*.db
+
+resources/config/application-*.jsonc

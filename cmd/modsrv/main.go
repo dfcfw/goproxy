@@ -1,48 +1,44 @@
 package main
 
 import (
+	"context"
+	"flag"
 	"log/slog"
-	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"runtime/debug"
+	"syscall"
 
-	"github.com/dfcfw/goproxy/business/service"
-	"github.com/dfcfw/goproxy/handler/restapi"
-	"github.com/xgfone/ship/v5"
+	"github.com/dfcfw/goproxy/launch"
 )
 
 func main() {
-	// moddir := "/Users/wang/Documents/gocode/pkg/mod/cache/download/"
-	moddir := "resources/mod/"
-	log := slog.Default()
-	sh := ship.Default()
-	sh.HandleError = func(c *ship.Context, err error) {
-		c.JSON(http.StatusBadRequest, map[string]string{"detail": err.Error()})
+	args := os.Args
+	name := filepath.Base(args[0])
+	set := flag.NewFlagSet(name, flag.ExitOnError)
+	cfg := set.String("c", "resources/config/application.jsonc", "配置文件")
+	_ = set.Parse(args[1:])
+
+	// https://github.com/golang/go/issues/67182
+	for _, fp := range []string{"resources/.crash.txt", ".crash.txt"} {
+		if f, _ := os.Create(fp); f != nil {
+			_ = debug.SetCrashOutput(f, debug.CrashOptions{})
+			_ = f.Close()
+			break
+		}
 	}
 
-	rootRGB := sh.Group("/")
-	rootRGB.Route("/").Static("resources/static/root/")
-	rootRGB.Route("/oas3").Static("resources/static/oas3/")
-	rootRGB.Route("/private").Use(func(h ship.Handler) ship.Handler {
-		return func(c *ship.Context) error {
-			w, r := c.Response(), c.Request()
-			name, pass, _ := r.BasicAuth()
-			if name != "root" && pass != "password" {
-				w.Header().Set(ship.HeaderWWWAuthenticate, `Basic realm="Restricted"`)
-				w.WriteHeader(http.StatusUnauthorized)
-			}
+	signals := []os.Signal{syscall.SIGTERM, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT}
+	ctx, cancel := signal.NotifyContext(context.Background(), signals...)
+	defer cancel()
 
-			return h(c)
-		}
-	}).Static(moddir)
+	opt := &slog.HandlerOptions{AddSource: true, Level: slog.LevelDebug}
+	log := slog.New(slog.NewJSONHandler(os.Stdout, opt))
 
-	gomodSvc := service.NewGomod(moddir, log)
-	gomodAPI := restapi.NewGomod(gomodSvc)
-	apiRGB := rootRGB.Group("/api")
-	apiRGB.Route("/gomod/walk").GET(gomodAPI.Walk)
-	apiRGB.Route("/gomod/stat").GET(gomodAPI.Stat)
-	apiRGB.Route("/gomod/file").GET(gomodAPI.File)
-	apiRGB.Route("/gomod/sniff").PUT(gomodAPI.Sniff)
-	apiRGB.Route("/gomod/upload").PUT(gomodAPI.Upload)
-	apiRGB.Route("/gomod/format").PUT(gomodAPI.Format)
-
-	_ = http.ListenAndServe(":65432", sh)
+	if err := launch.Run(ctx, *cfg); err != nil {
+		log.Error("服务运行错误", slog.Any("error", err))
+	} else {
+		log.Info("服务停止运行")
+	}
 }
