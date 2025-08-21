@@ -64,7 +64,17 @@ func (usr *User) Update(ctx context.Context, jobNumber string, admin bool) error
 func (usr *User) Delete(ctx context.Context, jobNumber string) error {
 	tbl := usr.qry.User
 	dao := tbl.WithContext(ctx)
-	_, err := dao.Where(tbl.JobNumber.Eq(jobNumber)).Delete()
+	ret, err := dao.Where(tbl.JobNumber.Eq(jobNumber)).Delete()
+	if err != nil {
+		return err
+	} else if ret.RowsAffected == 0 {
+		return errcode.ErrDataNotExists
+	}
+
+	tk := usr.qry.AccessToken
+	_, _ = tk.WithContext(ctx).
+		Where(tk.JobNumber.Eq(jobNumber)).
+		Delete()
 
 	return err
 }
