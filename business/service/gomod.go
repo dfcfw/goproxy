@@ -386,12 +386,75 @@ func (gmd *Gomod) Open(rawpath string, filename string) (*os.File, error) {
 		return nil, os.ErrNotExist
 	}
 	suffix := strings.TrimSuffix(filename, ext)
-	if _, err := module.UnescapeVersion(suffix); err != nil {
+	if _, err = module.UnescapeVersion(suffix); err != nil {
 		return nil, err
 	}
 	fpath := filepath.Join(gmd.dir, escpath, "@v", filename)
 
 	return os.Open(fpath)
+}
+
+func (gmd *Gomod) Delete(rawpath string, rawversion string) error {
+	modpath, err := module.EscapePath(rawpath)
+	if err != nil {
+		return err
+	}
+	if rawversion == "" {
+		dir := filepath.Join(gmd.dir, modpath)
+		return os.RemoveAll(dir)
+	}
+	modversion, err := module.EscapeVersion(rawversion)
+	if err != nil {
+		return err
+	}
+
+	flist := filepath.Join(gmd.dir, modpath, "@v", "list")
+	var versions []string
+	{
+		file, err := os.Open(flist)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+
+		sc := bufio.NewScanner(file)
+		for sc.Scan() {
+			line := sc.Text()
+			if line != modversion {
+				versions = append(versions, line)
+			}
+		}
+		_ = file.Close()
+	}
+
+	semver.Sort(versions)
+	fd, err := os.OpenFile(flist, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
+	if err != nil {
+		return err
+	}
+	for _, ver := range versions {
+		fd.WriteString(ver + "\n")
+	}
+	_ = fd.Close()
+
+	dir := filepath.Join(gmd.dir, modpath, "@v")
+	entries, _ := os.ReadDir(dir)
+	for _, entry := range entries {
+		name := entry.Name()
+		ext := path.Ext(name)
+		if ext == "" {
+			continue
+		}
+		if name != modversion+ext {
+			continue
+		}
+		dname := filepath.Join(dir, name)
+		_ = os.Remove(dname)
+	}
+
+	return nil
 }
 
 type moduleInfo struct {

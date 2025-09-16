@@ -13,6 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
     <style>
+        /* ---------- 样式 ---------- */
         body {
             background: #121212;
             color: #ccc;
@@ -86,7 +87,7 @@
             display: none;
         }
 
-        /* FAB 按钮 */
+        /* FAB */
         .fab {
             width: 56px;
             height: 56px;
@@ -164,7 +165,6 @@
             color: white;
         }
 
-        /* 文件上传按钮美化 */
         .file-upload {
             display: flex;
             align-items: center;
@@ -197,7 +197,6 @@
             font-size: 13px;
         }
 
-        /* 下载按钮 */
         .btn-download {
             width: 28px;
             height: 28px;
@@ -254,9 +253,41 @@
             cursor: pointer;
             font-weight: 500;
         }
+
+        /* 右键菜单 */
+        #contextMenu {
+            position: absolute;
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 4px;
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        #contextMenu button {
+            padding: 6px 12px;
+            border: none;
+            background: none;
+            color: #ccc;
+            text-align: left;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        #contextMenu button:hover {
+            background: #2c2c2c;
+        }
+
+        /* Loading */
+        #loadingOverlay div {
+            text-align: center;
+        }
+
     </style>
 </head>
 <body>
+
 <div id="tree"></div>
 <div id="details"><em>请选择一个节点查看详情</em></div>
 
@@ -310,11 +341,30 @@
     </div>
 </div>
 
+<!-- 确认删除弹窗 -->
+<div class="modal" id="confirmDeleteModal">
+    <div class="modal-content">
+        <p>请输入 "<code id="deleteTarget"></code>" 确认删除</p>
+        <input type="text" id="deleteConfirmInput" placeholder="请输入">
+        <div class="modal-actions">
+            <button class="btn btn-secondary" id="cancelDelete">取消</button>
+            <button class="btn btn-primary" id="confirmDelete" style="background:#d32f2f;">确认删除</button>
+        </div>
+    </div>
+</div>
+
 <!-- Toast -->
 <div id="toast" class="toast"></div>
 
+<!-- 右键菜单 -->
+<div id="contextMenu" style="position:absolute; display:none; background:#1e1e1e; border:1px solid #444; border-radius:4px; z-index:10000; min-width:120px;">
+    <div id="deleteNode" style="display:flex; align-items:center; gap:6px; padding:6px 12px; cursor:pointer;">
+        <img src="./img/delete.svg" style="width:16px; height:16px;">
+        <span>删除</span>
+    </div>
+</div>
+
 <script>
-    // ---------- Toast ----------
     let toastTimeout;
 
     function showToast(msg) {
@@ -342,231 +392,27 @@
         if (e.target === formatModal) formatModal.style.display = 'none';
     });
 
+    // ---------- 上传模块 ----------
     const zipFileInput = document.getElementById('zipFile');
     const uploadBtn = document.querySelector('#uploadModal .btn-upload');
     const uploadFileName = document.getElementById('uploadFileName');
-
-    // 打开文件选择器
     uploadBtn.addEventListener('click', () => zipFileInput.click());
-
-    // 文件选择后处理
     zipFileInput.addEventListener('change', async () => {
         const file = zipFileInput.files[0];
         uploadFileName.textContent = file ? file.name : '未选择文件';
-
         if (!file) return;
-
-        // 自动 sniff ZIP 文件
         try {
             const formData = new FormData();
             formData.append('file', file);
-            const res = await fetch('/api/gomod/sniff', {
-                method: 'PUT',
-                body: formData
-            });
-            if (!res.ok) return; // 出错则忽略
+            const res = await fetch('/api/gomod/sniff', {method: 'PUT', body: formData});
+            if (!res.ok) return;
             const data = await res.json();
             if (data.path) document.getElementById('pathInput').value = data.path;
             if (data.version) document.getElementById('versionInput').value = data.version;
         } catch (err) {
-            // 忽略错误
         }
     });
 
-    // 上传模块
-    document.getElementById('submitUpload').addEventListener('click', async () => {
-        const file = zipFileInput.files[0];
-        const path = document.getElementById('pathInput').value.trim();
-        const version = document.getElementById('versionInput').value.trim();
-        if (!file) return showToast('请先选择 zip 文件');
-        if (!path) return showToast('模块路径必填');
-        if (!version) return showToast('版本号必填');
-
-        showLoading('正在上传模块...');
-        const btn = document.getElementById('submitUpload');
-        btn.disabled = true;
-
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('path', path);
-            formData.append('version', version);
-
-            const res = await fetch('/api/gomod/upload', {method: 'PUT', body: formData});
-            if (!res.ok) return showToast(`上传失败: ${res.status}`);
-
-            showToast('上传成功');
-            uploadModal.style.display = 'none';
-            zipFileInput.value = '';
-            document.getElementById('pathInput').value = '';
-            document.getElementById('versionInput').value = '';
-            await init(); // 重新加载树
-        } catch (err) {
-            showToast(err.message);
-        } finally {
-            hideLoading();
-            btn.disabled = false;
-        }
-    });
-
-    const formatZipInput = document.getElementById('formatZip');
-    const formatBtn = document.querySelector('#formatModal .btn-upload');
-    const formatFileName = document.getElementById('formatFileName');
-    formatBtn.addEventListener('click', () => formatZipInput.click());
-    formatZipInput.addEventListener('change', () => {
-        const file = formatZipInput.files[0];
-        formatFileName.textContent = file ? file.name : '未选择文件';
-    });
-
-    // ---------- walk 接口和树 ----------
-    async function fetchData(url) {
-        const res = await fetch(url);
-        if (!res.ok) {
-            showToast(`请求失败 ${res.status}`);
-            return;
-        }
-        return await res.json();
-    }
-
-    function createNode(item, type) {
-        const li = document.createElement('li');
-        const div = document.createElement('div');
-        div.className = 'node';
-        const toggle = document.createElement('img');
-        toggle.className = 'toggle';
-        if (type === 'path') toggle.src = './img/unfold.svg'; else toggle.style.visibility = 'hidden';
-        div.appendChild(toggle);
-        const img = document.createElement('img');
-        img.className = 'icon';
-        img.src = type === 'path' ? './img/path.svg' : './img/gomod.svg';
-        div.appendChild(img);
-        div.appendChild(document.createTextNode(item.name || item.version));
-        li.appendChild(div);
-        const childrenContainer = document.createElement('ul');
-        childrenContainer.classList.add('hidden');
-        li.appendChild(childrenContainer);
-        div.addEventListener('click', async e => {
-            e.stopPropagation();
-            if (type === 'path') {
-                if (!childrenContainer.hasChildNodes()) {
-                    const data = await fetchData(`/api/gomod/walk?path=${encodeURIComponent(item.path)}`);
-                    (data.paths || []).forEach(p => childrenContainer.appendChild(createNode(p, 'path')));
-                    (data.modules || []).forEach(m => {
-                        m.path = item.path;
-                        childrenContainer.appendChild(createNode(m, 'module'));
-                    });
-                }
-                const hidden = childrenContainer.classList.toggle('hidden');
-                toggle.src = hidden ? './img/unfold.svg' : './img/fold.svg';
-            } else if (type === 'module') {
-                const stat = await fetchData(`/api/gomod/stat?path=${encodeURIComponent(item.path)}&version=${encodeURIComponent(item.version)}`);
-                showDetails(item, stat);
-            }
-        });
-        return li;
-    }
-
-    function formatDateTime(iso) {
-        if (!iso) return '';
-        const d = new Date(iso);
-        const pad = n => n.toString().padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-    }
-
-    async function showDetails(moduleItem, files) {
-        const details = document.getElementById('details');
-        details.innerHTML = `
-        <h2>${moduleItem.path}@${moduleItem.version}</h2>
-        <table>
-            <thead><tr><th>名称</th><th>权限</th><th>大小</th><th>修改时间</th><th>操作</th></tr></thead>
-            <tbody>
-            ${(files || []).map(f => `
-                <tr>
-                    <td>${f.name}</td>
-                    <td>${f.mode}</td>
-                    <td>${f.size || ''}</td>
-                    <td>${formatDateTime(f.modified_at)}</td>
-                    <td>
-                        <button class="btn-download" title="下载" data-name="${f.name}">
-                            <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18v12l4-4h-3V4h-2v6H8l4 4z"/></svg>
-                        </button>
-                    </td>
-                </tr>
-            `).join('')}
-            </tbody>
-        </table>
-        <div id="markdownPreview" class="markdown-body" style="margin-top:20px;"></div>
-        `;
-
-        details.querySelectorAll('.btn-download').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const fileName = btn.getAttribute('data-name');
-                const a = document.createElement('a');
-                a.href = `/api/gomod/file?path=${encodeURIComponent(moduleItem.path)}&name=${encodeURIComponent(fileName)}`;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-            });
-        });
-
-        // Markdown 渲染
-        const mdFile = (files || []).find(f => f.name.toLowerCase().endsWith('.markdown'));
-        if (mdFile) {
-            try {
-                const url = `/api/gomod/file?path=${encodeURIComponent(moduleItem.path)}&name=${encodeURIComponent(mdFile.name)}`;
-                const res = await fetch(url);
-                if (!res.ok) return showToast(`Markdown 加载失败 ${res.status}`);
-                const buffer = await res.arrayBuffer();
-                const bytes = new Uint8Array(buffer);
-                let text = '';
-                if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) text = new TextDecoder('utf-16le').decode(bytes.subarray(2));
-                else if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) text = new TextDecoder('utf-16be').decode(bytes.subarray(2));
-                else text = new TextDecoder('utf-8').decode(bytes);
-
-                const md = window.markdownit({
-                    html: true,
-                    linkify: true,
-                    typographer: true,
-                    highlight: function (str, lang) {
-                        if (lang && hljs.getLanguage(lang)) {
-                            try {
-                                return hljs.highlight(str, {language: lang}).value
-                            } catch (_) {
-                            }
-                        }
-                        return hljs.highlightAuto(str).value;
-                    }
-                });
-                document.getElementById('markdownPreview').innerHTML = md.render(text);
-            } catch (err) {
-                showToast(`Markdown 加载失败: ${err.message}`);
-            }
-        }
-    }
-
-    async function init() {
-        const treeDiv = document.getElementById('tree');
-        treeDiv.innerHTML = '';
-        try {
-            const data = await fetchData('/api/gomod/walk?path=');
-            if (!data || ((!data.paths || data.paths.length === 0) && (!data.modules || data.modules.length === 0))) {
-                treeDiv.innerHTML = `<em>当前没有任何 Go 模块，请点击右下角上传一个模块吧</em>`;
-                document.getElementById('details').innerHTML = '';
-                return;
-            }
-            const ul = document.createElement('ul');
-            (data.paths || []).forEach(p => ul.appendChild(createNode(p, 'path')));
-            (data.modules || []).forEach(m => ul.appendChild(createNode(m, 'module')));
-            treeDiv.appendChild(ul);
-        } catch (err) {
-            showToast(`初始化失败: ${err.message}`);
-        }
-    }
-
-    init();
-
-    // ---------- 上传模块 ----------
     document.getElementById('submitUpload').addEventListener('click', async () => {
         const file = zipFileInput.files[0];
         const path = document.getElementById('pathInput').value.trim();
@@ -599,6 +445,14 @@
     });
 
     // ---------- 格式转化 ----------
+    const formatZipInput = document.getElementById('formatZip');
+    const formatBtn = document.querySelector('#formatModal .btn-upload');
+    const formatFileName = document.getElementById('formatFileName');
+    formatBtn.addEventListener('click', () => formatZipInput.click());
+    formatZipInput.addEventListener('change', () => {
+        const file = formatZipInput.files[0];
+        formatFileName.textContent = file ? file.name : '未选择文件';
+    });
     document.getElementById('submitFormat').addEventListener('click', async () => {
         const file = formatZipInput.files[0];
         const path = document.getElementById('formatPath').value.trim();
@@ -668,6 +522,218 @@
         const loading = document.getElementById('loadingOverlay');
         if (loading) loading.style.display = 'none';
     }
+
+    // ---------- Fetch Data ----------
+    async function fetchData(url) {
+        const res = await fetch(url);
+        if (!res.ok) {
+            showToast(`请求失败 ${res.status}`);
+            return;
+        }
+        return await res.json();
+    }
+
+    function formatDateTime(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const pad = n => n.toString().padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    // ---------- 右键删除相关 ----------
+    let currentNode = null;
+    const contextMenu = document.getElementById('contextMenu');
+    const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+    const deleteTargetSpan = document.getElementById('deleteTarget');
+    const deleteConfirmInput = document.getElementById('deleteConfirmInput');
+    let deleteNodeInfo = null;
+
+    function bindContextMenu(nodeEl, item, type) {
+        nodeEl.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            currentNode = {item, type, el: nodeEl};
+            contextMenu.style.top = `${e.clientY}px`;
+            contextMenu.style.left = `${e.clientX}px`;
+            contextMenu.style.display = 'flex';
+        });
+    }
+
+    document.getElementById('deleteNode').addEventListener('click', () => {
+        if (!currentNode) return;
+        deleteNodeInfo = currentNode;
+        const {item} = currentNode;
+        deleteTargetSpan.textContent = item.version ? `${item.path}@${item.version}` : item.path;
+        deleteConfirmInput.value = '';
+        confirmDeleteModal.style.display = 'flex';
+        contextMenu.style.display = 'none';
+    });
+    document.getElementById('cancelDelete').addEventListener('click', () => {
+        confirmDeleteModal.style.display = 'none';
+        deleteNodeInfo = null;
+    });
+    document.getElementById('confirmDelete').addEventListener('click', async () => {
+        if (!deleteNodeInfo) return;
+        const {item, el} = deleteNodeInfo;
+        const input = deleteConfirmInput.value.trim();
+        const expected = item.version ? `${item.path}@${item.version}` : item.path;
+        if (input !== expected) return showToast('输入错误');
+        try {
+            const path = encodeURIComponent(item.path);
+            const version = item.version ? `&version=${encodeURIComponent(item.version)}` : '';
+            const res = await fetch(`/api/gomod?path=${path}${version}`, {method: 'DELETE'});
+            if (!res.ok) return showToast(`删除失败: ${res.status}`);
+            showToast('删除成功');
+            el.parentElement.remove();
+        } catch (err) {
+            showToast(`删除失败: ${err.message}`);
+        } finally {
+            confirmDeleteModal.style.display = 'none';
+            deleteNodeInfo = null;
+        }
+    });
+    confirmDeleteModal.addEventListener('click', e => {
+        if (e.target === confirmDeleteModal) confirmDeleteModal.style.display = 'none';
+    });
+    document.addEventListener('click', () => {
+        contextMenu.style.display = 'none';
+    });
+
+    // ---------- 树构建 ----------
+    function createNode(item, type) {
+        const li = document.createElement('li');
+        const div = document.createElement('div');
+        div.className = 'node';
+        const toggle = document.createElement('img');
+        toggle.className = 'toggle';
+        if (type === 'path') toggle.src = './img/unfold.svg'; else toggle.style.visibility = 'hidden';
+        div.appendChild(toggle);
+        const img = document.createElement('img');
+        img.className = 'icon';
+        img.src = type === 'path' ? './img/path.svg' : './img/gomod.svg';
+        div.appendChild(img);
+        div.appendChild(document.createTextNode(item.name || item.version));
+        li.appendChild(div);
+        const childrenContainer = document.createElement('ul');
+        childrenContainer.classList.add('hidden');
+        li.appendChild(childrenContainer);
+
+        // 绑定右键
+        bindContextMenu(div, item, type);
+
+        div.addEventListener('click', async e => {
+            e.stopPropagation();
+            if (type === 'path') {
+                if (!childrenContainer.hasChildNodes()) {
+                    const data = await fetchData(`/api/gomod/walk?path=${encodeURIComponent(item.path)}`);
+                    (data.paths || []).forEach(p => childrenContainer.appendChild(createNode(p, 'path')));
+                    (data.modules || []).forEach(m => {
+                        m.path = item.path;
+                        childrenContainer.appendChild(createNode(m, 'module'));
+                    });
+                }
+                const hidden = childrenContainer.classList.toggle('hidden');
+                toggle.src = hidden ? './img/unfold.svg' : './img/fold.svg';
+            } else if (type === 'module') {
+                const stat = await fetchData(`/api/gomod/stat?path=${encodeURIComponent(item.path)}&version=${encodeURIComponent(item.version)}`);
+                showDetails(item, stat);
+            }
+        });
+        return li;
+    }
+
+    // ---------- 显示模块详情 ----------
+    async function showDetails(moduleItem, files) {
+        const details = document.getElementById('details');
+        details.innerHTML = `
+    <h2>${moduleItem.path}@${moduleItem.version}</h2>
+    <table>
+        <thead><tr><th>名称</th><th>权限</th><th>大小</th><th>修改时间</th><th>操作</th></tr></thead>
+        <tbody>
+        ${(files || []).map(f => `
+            <tr>
+                <td>${f.name}</td>
+                <td>${f.mode}</td>
+                <td>${f.size || ''}</td>
+                <td>${formatDateTime(f.modified_at)}</td>
+                <td>
+                    <button class="btn-download" title="下载" data-name="${f.name}">
+                        <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18v12l4-4h-3V4h-2v6H8l4 4z"/></svg>
+                    </button>
+                </td>
+            </tr>
+        `).join('')}
+        </tbody>
+    </table>
+    <div id="markdownPreview" class="markdown-body" style="margin-top:20px;"></div>
+    `;
+        details.querySelectorAll('.btn-download').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const fileName = btn.getAttribute('data-name');
+                const a = document.createElement('a');
+                a.href = `/api/gomod/file?path=${encodeURIComponent(moduleItem.path)}&name=${encodeURIComponent(fileName)}`;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            });
+        });
+
+        // Markdown 渲染
+        const mdFile = (files || []).find(f => f.name.toLowerCase().endsWith('.markdown'));
+        if (mdFile) {
+            try {
+                const url = `/api/gomod/file?path=${encodeURIComponent(moduleItem.path)}&name=${encodeURIComponent(mdFile.name)}`;
+                const res = await fetch(url);
+                if (!res.ok) return showToast(`Markdown 加载失败 ${res.status}`);
+                const buffer = await res.arrayBuffer();
+                const bytes = new Uint8Array(buffer);
+                let text = '';
+                if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) text = new TextDecoder('utf-16le').decode(bytes.subarray(2));
+                else if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) text = new TextDecoder('utf-16be').decode(bytes.subarray(2));
+                else text = new TextDecoder('utf-8').decode(bytes);
+
+                const md = window.markdownit({
+                    html: true,
+                    linkify: true,
+                    typographer: true,
+                    highlight: function (str, lang) {
+                        if (lang && hljs.getLanguage(lang)) {
+                            try {
+                                return hljs.highlight(str, {language: lang}).value
+                            } catch (_) {
+                            }
+                        }
+                        return hljs.highlightAuto(str).value;
+                    }
+                });
+                document.getElementById('markdownPreview').innerHTML = md.render(text);
+            } catch (err) {
+                showToast(`Markdown 加载失败: ${err.message}`);
+            }
+        }
+    }
+
+    // ---------- 初始化树 ----------
+    async function init() {
+        const treeDiv = document.getElementById('tree');
+        treeDiv.innerHTML = '';
+        try {
+            const data = await fetchData('/api/gomod/walk?path=');
+            if (!data || ((!data.paths || data.paths.length === 0) && (!data.modules || data.modules.length === 0))) {
+                treeDiv.innerHTML = `<em>当前没有任何 Go 模块，请点击右下角上传一个模块吧</em>`;
+                document.getElementById('details').innerHTML = '';
+                return;
+            }
+            const ul = document.createElement('ul');
+            (data.paths || []).forEach(p => ul.appendChild(createNode(p, 'path')));
+            (data.modules || []).forEach(m => ul.appendChild(createNode(m, 'module')));
+            treeDiv.appendChild(ul);
+        } catch (err) {
+            showToast(`初始化失败: ${err.message}`);
+        }
+    }
+
+    init();
 </script>
 </body>
 </html>

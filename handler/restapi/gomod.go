@@ -37,6 +37,8 @@ func (gmd *Gomod) RegisterRoute(r *ship.RouteGroupBuilder) error {
 		Data(shipx.NewRouteInfo("上传模块文件").Map()).PUT(gmd.upload)
 	r.Route("/api/gomod/format").
 		Data(shipx.NewRouteInfo("格式转换").Map()).PUT(gmd.format)
+	r.Route("/api/gomod").
+		Data(shipx.NewRouteInfo("格式转换").Map()).DELETE(gmd.delete)
 
 	return nil
 }
@@ -157,4 +159,14 @@ func (gmd *Gomod) file(c *ship.Context) error {
 	}
 
 	return c.Stream(http.StatusOK, ct, file)
+}
+
+func (gmd *Gomod) delete(c *ship.Context) error {
+	req := new(request.GomodDelete)
+	if err := c.BindQuery(req); err != nil {
+		return err
+	}
+	modpath, name := req.Path, req.Version
+
+	return gmd.svc.Delete(modpath, name)
 }
