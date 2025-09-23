@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dfcfw/goproxy/contract/errcode"
+	"github.com/dfcfw/goproxy/contract/request"
 	"github.com/dfcfw/goproxy/datalayer/model"
 	"github.com/dfcfw/goproxy/datalayer/query"
 )
@@ -38,20 +39,27 @@ func (usr *User) List(ctx context.Context) ([]*model.User, error) {
 	return dao.Find()
 }
 
-func (usr *User) Create(ctx context.Context, jobNumber string, admin bool) error {
+func (usr *User) Create(ctx context.Context, req *request.UserUpsert) error {
 	tbl := usr.qry.User
 	dao := tbl.WithContext(ctx)
-	dat := &model.User{JobNumber: jobNumber, Admin: admin}
+	dat := &model.User{
+		JobNumber: req.JobNumber,
+		Name:      req.Name,
+		Admin:     req.Admin,
+	}
 
 	return dao.Create(dat)
 }
 
-func (usr *User) Update(ctx context.Context, jobNumber string, admin bool) error {
+func (usr *User) Update(ctx context.Context, req *request.UserUpsert) error {
 	tbl := usr.qry.User
 	dao := tbl.WithContext(ctx)
 
-	ret, err := dao.Where(tbl.JobNumber.Eq(jobNumber)).
-		UpdateColumnSimple(tbl.Admin.Value(admin))
+	ret, err := dao.Where(tbl.JobNumber.Eq(req.JobNumber)).
+		UpdateColumnSimple(
+			tbl.Admin.Value(req.Admin),
+			tbl.Name.Value(req.Name),
+		)
 	if err != nil {
 		return err
 	} else if ret.RowsAffected == 0 {

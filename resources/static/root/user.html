@@ -152,6 +152,7 @@
         <thead>
         <tr>
             <th>工号</th>
+            <th>名字</th>
             <th>管理员</th>
             <th>操作</th>
         </tr>
@@ -166,6 +167,7 @@
     <div class="modal-content">
         <h3 id="modalTitle">新增</h3>
         <input type="text" id="jobNumberInput" placeholder="工号">
+        <input type="text" id="nameInput" placeholder="名字">
         <label><input type="checkbox" id="adminInput"> 管理员</label>
         <div class="modal-actions">
             <button class="btn btn-secondary" id="cancelBtn">取消</button>
@@ -197,6 +199,7 @@
     const userModal = document.getElementById('userModal');
     const deleteModal = document.getElementById('deleteModal');
     const jobNumberInput = document.getElementById('jobNumberInput');
+    const nameInput = document.getElementById('nameInput');
     const adminInput = document.getElementById('adminInput');
     const modalTitle = document.getElementById('modalTitle');
     const submitBtn = document.getElementById('submitBtn');
@@ -231,6 +234,7 @@
             const adminText = u.admin ? '是' : '否';
             tr.innerHTML = `
             <td>${u.job_number}</td>
+            <td>${u.name}</td>
             <td class="${u.admin ? 'admin' : ''}">${adminText}</td>
             <td>
                 <button class="btn btn-primary btn-edit">修改</button>
@@ -266,6 +270,7 @@
 
     submitBtn.addEventListener('click', async () => {
         const job_number = jobNumberInput.value.trim();
+        const name = nameInput.value.trim();
         const admin = adminInput.checked;
         if (!job_number) return showToast('工号必填');
         try {
@@ -274,13 +279,13 @@
                 res = await fetch('/api/user', {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({job_number, admin})
+                    body: JSON.stringify({job_number, name, admin})
                 });
             } else {
                 res = await fetch('/api/user', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({job_number, admin})
+                    body: JSON.stringify({job_number, name, admin})
                 });
             }
             if (res.ok) {

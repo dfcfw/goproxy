@@ -28,6 +28,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	tableName := _user.userDo.TableName()
 	_user.ALL = field.NewAsterisk(tableName)
 	_user.JobNumber = field.NewString(tableName, "job_number")
+	_user.Name = field.NewString(tableName, "name")
 	_user.Admin = field.NewBool(tableName, "admin")
 
 	_user.fillFieldMap()
@@ -40,6 +41,7 @@ type user struct {
 
 	ALL       field.Asterisk
 	JobNumber field.String // 工号
+	Name      field.String // 名字
 	Admin     field.Bool   // 是否管理员
 
 	fieldMap map[string]field.Expr
@@ -58,6 +60,7 @@ func (u user) As(alias string) *user {
 func (u *user) updateTableName(table string) *user {
 	u.ALL = field.NewAsterisk(table)
 	u.JobNumber = field.NewString(table, "job_number")
+	u.Name = field.NewString(table, "name")
 	u.Admin = field.NewBool(table, "admin")
 
 	u.fillFieldMap()
@@ -83,8 +86,9 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 2)
+	u.fieldMap = make(map[string]field.Expr, 3)
 	u.fieldMap["job_number"] = u.JobNumber
+	u.fieldMap["name"] = u.Name
 	u.fieldMap["admin"] = u.Admin
 }
 

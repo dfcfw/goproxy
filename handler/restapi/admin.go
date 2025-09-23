@@ -46,9 +46,8 @@ func (usr *User) create(c *ship.Context) error {
 		return err
 	}
 	ctx := c.Request().Context()
-	jobNumber, admin := req.JobNumber, req.Admin
 
-	return usr.svc.Create(ctx, jobNumber, admin)
+	return usr.svc.Create(ctx, req)
 }
 
 func (usr *User) update(c *ship.Context) error {
@@ -57,9 +56,8 @@ func (usr *User) update(c *ship.Context) error {
 		return err
 	}
 	ctx := c.Request().Context()
-	jobNumber, admin := req.JobNumber, req.Admin
 
-	return usr.svc.Update(ctx, jobNumber, admin)
+	return usr.svc.Update(ctx, req)
 }
 
 func (usr *User) delete(c *ship.Context) error {
